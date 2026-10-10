@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: realisasi
+      POSTGRES_USER: realisasi
+      POSTGRES_PASSWORD: realisasi
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/realisasi
+      DB_USERNAME: realisasi
+      DB_PASSWORD: realisasi
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
