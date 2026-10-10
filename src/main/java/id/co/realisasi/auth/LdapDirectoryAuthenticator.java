@@ -15,7 +15,15 @@ import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
+import javax.naming.ldap.Control;
+import javax.naming.ldap.InitialLdapContext;
+import javax.naming.ldap.LdapContext;
+import javax.naming.ldap.PagedResultsControl;
+import javax.naming.ldap.PagedResultsResponseControl;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 
 /**
  * Login ke Microsoft Active Directory: bind sebagai {@code username@domain} memakai password user
@@ -97,18 +105,92 @@ public class LdapDirectoryAuthenticator implements DirectoryAuthenticator {
             if (!results.hasMore()) {
                 return null;
             }
-            Attributes a = results.next().getAttributes();
-            String nama = attr(a, "displayName");
-            return new DirectoryUser(
-                    attr(a, "sAMAccountName") != null ? attr(a, "sAMAccountName") : sam,
-                    nama != null ? nama : attr(a, "cn"),
-                    attr(a, "mail"), attr(a, "department"), attr(a, "title"),
-                    attr(a, "userPrincipalName"), attr(a, "distinguishedName"));
+            return toUser(results.next().getAttributes(), sam);
         } catch (PartialResultException e) {
             return null; // hanya referral yang tersisa
         } finally {
             results.close();
         }
+    }
+
+    /** User AD yang aktif (bukan disabled) dan punya sAMAccountName. */
+    private static final String ALL_USERS_FILTER = "(&(objectCategory=person)(objectClass=user)(sAMAccountName=*)"
+            + "(!(userAccountControl:1.2.840.113556.1.4.803:=2)))";
+    private static final int PAGE_SIZE = 500;
+
+    /**
+     * Baca semua user aktif memakai service account. Pakai paged results karena AD membatasi
+     * satu pencarian maksimal 1000 entri.
+     */
+    @Override
+    public List<DirectoryUser> listUsers() {
+        if (props.managerDn() == null || props.managerDn().isBlank()
+                || props.managerPassword() == null || props.managerPassword().isEmpty()) {
+            throw new DirectoryUnavailableException(
+                    "Service account LDAP belum diatur (ldap.manager-dn dan env LDAP_BIND_PASSWORD)", null);
+        }
+        String principal = props.managerDn().contains("@") || props.managerDn().contains("=")
+                ? props.managerDn() : props.managerDn() + "@" + props.domain();
+        LdapContext ctx = null;
+        try {
+            ctx = new InitialLdapContext(env(principal, props.managerPassword()), null);
+            SearchControls sc = new SearchControls();
+            sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
+            sc.setReturningAttributes(ATTRS);
+            List<DirectoryUser> users = new ArrayList<>();
+            byte[] cookie = null;
+            do {
+                ctx.setRequestControls(new Control[]{new PagedResultsControl(PAGE_SIZE, cookie, Control.CRITICAL)});
+                NamingEnumeration<SearchResult> results = ctx.search(props.searchBase(), ALL_USERS_FILTER, sc);
+                try {
+                    while (results.hasMore()) {
+                        users.add(toUser(results.next().getAttributes(), null));
+                    }
+                } catch (PartialResultException e) {
+                    // sisa hasil hanya referral
+                } finally {
+                    results.close();
+                }
+                cookie = null;
+                Control[] controls = ctx.getResponseControls();
+                if (controls != null) {
+                    for (Control c : controls) {
+                        if (c instanceof PagedResultsResponseControl prc) {
+                            cookie = prc.getCookie();
+                        }
+                    }
+                }
+            } while (cookie != null && cookie.length > 0);
+            log.info("Sync LDAP: {} user aktif dibaca dari {}", users.size(), props.searchBase());
+            return users;
+        } catch (AuthenticationException e) {
+            log.error("Service account LDAP {} ditolak AD: {}", principal, e.getMessage());
+            throw new DirectoryUnavailableException("Service account LDAP ditolak AD (cek LDAP_BIND_PASSWORD)", e);
+        } catch (CommunicationException e) {
+            log.error("Server LDAP {} tidak dapat dihubungi", props.url(), e);
+            throw new DirectoryUnavailableException("Server LDAP tidak dapat dihubungi", e);
+        } catch (NamingException | IOException e) {
+            log.error("Error LDAP saat membaca daftar user", e);
+            throw new DirectoryUnavailableException("Gagal membaca daftar user dari LDAP", e);
+        } finally {
+            if (ctx != null) {
+                try {
+                    ctx.close();
+                } catch (NamingException ignored) {
+                    // koneksi sudah ditutup
+                }
+            }
+        }
+    }
+
+    private static DirectoryUser toUser(Attributes a, String fallbackUsername) throws NamingException {
+        String sam = attr(a, "sAMAccountName");
+        String nama = attr(a, "displayName");
+        return new DirectoryUser(
+                sam != null ? sam : fallbackUsername,
+                nama != null ? nama : attr(a, "cn"),
+                attr(a, "mail"), attr(a, "department"), attr(a, "title"),
+                attr(a, "userPrincipalName"), attr(a, "distinguishedName"));
     }
 
     private static String attr(Attributes a, String name) throws NamingException {

@@ -34,6 +34,8 @@ import { AuthService } from './core/auth.service';
         <div class="nav-label">PENGATURAN</div>
         <a routerLink="/master" routerLinkActive="active" title="Master Data">
           <svg class="ico" viewBox="0 0 24 24"><path d="M12 3c4.97 0 9 1.34 9 3s-4.03 3-9 3-9-1.34-9-3 4.03-3 9-3zm-9 6c0 1.66 4.03 3 9 3s9-1.34 9-3v4c0 1.66-4.03 3-9 3s-9-1.34-9-3zm0 7c0 1.66 4.03 3 9 3s9-1.34 9-3v3c0 1.66-4.03 3-9 3s-9-1.34-9-3z"/></svg><span>Master Data</span></a>
+        <a routerLink="/pengguna" routerLinkActive="active" title="Pengguna & Departemen AD">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 10v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1zm15-10a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm1.5 3H17a7.9 7.9 0 0 1 3 6v1h3v-1a5 5 0 0 0-4.5-6z"/></svg><span>Pengguna AD</span></a>
       </nav>
       <div class="sidebar-foot">
         <button type="button" class="nav-group-btn collapse-btn" (click)="collapsed=!collapsed" [title]="collapsed?'Perluas menu':'Ciutkan menu'">

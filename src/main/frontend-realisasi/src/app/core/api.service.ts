@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { LdapDepartemenGroup, LdapSyncResult } from './models';
 import { CapexOpex, Company, Divisi, Financial, GroupOverview, ImportResult, LevelOrganisasi, MataAnggaran, Milestone, MonitoringRka, Pekerjaan, ProgramKerja, ProgressItem, RealisasiItem, TipeAnggaran } from './models';
 
 export interface Filters { companyId?:number|null; divisiId?:number|null; tahun?:number|null; tipe?:TipeAnggaran|null; pic?:string|null; programKerjaId?:number|null; }
@@ -58,4 +59,8 @@ export class ApiService {
   monitoring(filters:Filters={}):Observable<MonitoringRka>{ return this.http.get<MonitoringRka>(`${this.base}/dashboard/monitoring-rka`,{params:this.params(filters)}); }
   capexOpex(filters:Filters={}):Observable<CapexOpex>{ return this.http.get<CapexOpex>(`${this.base}/dashboard/capex-opex`,{params:this.params(filters)}); }
   groupOverview(filters:Filters={}):Observable<GroupOverview>{ return this.http.get<GroupOverview>(`${this.base}/dashboard/group-overview`,{params:this.params(filters)}); }
+
+  ldapSync(){ return this.http.post<LdapSyncResult>(`${this.base}/ldap/sync`,{}); }
+  ldapDepartemen():Observable<LdapDepartemenGroup[]>{ return this.http.get<LdapDepartemenGroup[]>(`${this.base}/ldap/departemen`); }
+  mapLdapDepartemen(id:number,divisiId:number|null){ return this.http.put<void>(`${this.base}/ldap/departemen/${id}/divisi`,{divisiId}); }
 }

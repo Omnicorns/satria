@@ -23,6 +23,12 @@ class LdapDirectoryAuthenticatorTest {
     }
 
     @Test
+    void syncTanpaServiceAccountDitolak() {
+        assertThatThrownBy(ldap::listUsers).isInstanceOf(DirectoryUnavailableException.class)
+                .hasMessageContaining("LDAP_BIND_PASSWORD");
+    }
+
+    @Test
     void filterLdapDiEscape() {
         assertThat(LdapDirectoryAuthenticator.escape("a*)(cn=*")).isEqualTo("a\\2a\\29\\28cn=\\2a");
     }

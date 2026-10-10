@@ -31,16 +31,19 @@ public class AuthService {
 
     private final DirectoryAuthenticator directory;
     private final AppUserRepository users;
+    private final LdapDepartemenService departemen;
     private final UserSessionRepository sessions;
     private final TransactionTemplate tx;
     private final Clock clock;
     private final long sessionHours;
 
-    public AuthService(DirectoryAuthenticator directory, AppUserRepository users, UserSessionRepository sessions,
+    public AuthService(DirectoryAuthenticator directory, AppUserRepository users, LdapDepartemenService departemen,
+                       UserSessionRepository sessions,
                        PlatformTransactionManager txManager, Clock clock,
                        @Value("${app.auth.session-hours:12}") long sessionHours) {
         this.directory = directory;
         this.users = users;
+        this.departemen = departemen;
         this.sessions = sessions;
         this.tx = new TransactionTemplate(txManager);
         this.clock = clock;
@@ -70,6 +73,7 @@ public class AuthService {
             user.setEmail(du.email());
             user.setDepartemen(du.departemen());
             user.setJabatan(du.jabatan());
+            user.setLdapDepartemen(departemen.resolve(du.departemen(), null));
             user.setUserPrincipalName(du.userPrincipalName());
             user.setDistinguishedName(du.distinguishedName());
             user.setSumber(directory.sumber());

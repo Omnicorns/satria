@@ -45,5 +45,7 @@ ldap:
   user-search-base: ${LDAP_USER_SEARCH_BASE:}
   manager-dn: ${LDAP_MANAGER_DN:itgroup@sarinah.net}
   manager-password: ${LDAP_BIND_PASSWORD:}
+  # Sync otomatis user + departemen AD (cron Spring, contoh "0 0 2 * * *" = tiap jam 02.00). "-" = mati.
+  sync-cron: ${LDAP_SYNC_CRON:-}
   connect-timeout-ms: 5000
   read-timeout-ms: 10000

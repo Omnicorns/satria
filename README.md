@@ -69,6 +69,27 @@ Token berlaku 12 jam (`AUTH_SESSION_HOURS`), hanya hash-nya yang disimpan di tab
 
 Set `aktif=false` di `app_user` untuk memblokir user walau password AD-nya benar.
 
+### Sync departemen AD
+
+`POST /api/ldap/sync` membaca **semua user aktif** di AD memakai service account (`LDAP_MANAGER_DN` +
+`LDAP_BIND_PASSWORD`, paged 500 per halaman), lalu:
+
+- menyimpan setiap nilai atribut `department` ke tabel `ldap_departemen` (nama unik, tidak peka huruf besar/kecil);
+- membuat/memperbarui user di `app_user` (user yang belum pernah login ikut dibuat, `last_login_at` kosong)
+  dan menautkannya ke departemennya lewat `app_user.ldap_departemen_id`.
+
+`ldap_departemen` sengaja dipisah dari master `divisi`: nama departemen di AD adalah teks bebas dan tidak sama dengan
+struktur anggaran. Kolom `ldap_departemen.divisi_id` (opsional) memetakan departemen AD ke divisi anggaran.
+
+| Method | Path | Keterangan |
+|---|---|---|
+| POST | `/api/ldap/sync` | Jalankan sync, hasil: jumlah user/departemen baru & diperbarui |
+| GET | `/api/ldap/departemen` | Departemen + daftar username di dalamnya; grup terakhir `(Tanpa departemen)` |
+| PUT | `/api/ldap/departemen/{id}/divisi` | `{"divisiId": 3}` memetakan ke divisi anggaran (`null` = lepas) |
+
+Sync otomatis: isi `LDAP_SYNC_CRON` (cron Spring, contoh `0 0 2 * * *` = tiap hari jam 02.00); default mati.
+Di frontend: menu **Pengaturan → Pengguna AD**.
+
 Variabel lingkungan:
 
 | Variabel | Default |
@@ -80,12 +101,14 @@ Variabel lingkungan:
 | `LDAP_MANAGER_DN` | `itgroup@sarinah.net` |
 | `LDAP_BIND_PASSWORD` | kosong. **Isi lewat env, jangan ditulis di file/commit.** |
 | `LDAP_ENABLED` | `true` (prod), `false` di profil dev/test |
+| `LDAP_SYNC_CRON` | `-` (sync otomatis mati) |
 | `AUTH_REQUIRED` | `true` (prod), `false` di profil dev/test |
 
 Profil dev/test tidak memakai AD: username apa pun bisa login dengan password `dev`.
 Untuk mencoba AD dari dev: `LDAP_ENABLED=true AUTH_REQUIRED=true mvn spring-boot:run -Dspring-boot.run.profiles=dev`.
 
-Database yang sudah berjalan: jalankan `psql -f db/migrasi_v4_login_ldap.sql` (atau biarkan `ddl-auto=update`).
+Database yang sudah berjalan: jalankan `psql -f db/migrasi_v4_login_ldap.sql` lalu `db/migrasi_v5_sync_departemen_ad.sql`
+(atau biarkan `ddl-auto=update`).
 
 ## Endpoint
 

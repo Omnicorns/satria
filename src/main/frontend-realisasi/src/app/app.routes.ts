@@ -7,5 +7,6 @@ export const routes: Routes = [
   {path:'rka', canActivate:[authGuard], data:{title:'Monitoring RKA', section:'Budget & RKA'}, loadComponent:()=>import('./pages/rka/rka.page').then(m=>m.RkaPage)},
   {path:'pekerjaan', canActivate:[authGuard], data:{title:'CAPEX / OPEX', section:'Budget & RKA'}, loadComponent:()=>import('./pages/pekerjaan/pekerjaan.page').then(m=>m.PekerjaanPage)},
   {path:'master', canActivate:[authGuard], data:{title:'Master Data', section:'Pengaturan'}, loadComponent:()=>import('./pages/master/master.page').then(m=>m.MasterPage)},
+  {path:'pengguna', canActivate:[authGuard], data:{title:'Pengguna & Departemen AD', section:'Pengaturan'}, loadComponent:()=>import('./pages/pengguna/pengguna.page').then(m=>m.PenggunaPage)},
   {path:'**', redirectTo:'dashboard'}
 ];
