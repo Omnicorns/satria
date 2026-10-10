@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 
 @Component({selector:'app-login',standalone:true,imports:[CommonModule,FormsModule],template:`
@@ -25,11 +26,11 @@ import { AuthService } from '../../core/auth.service';
       <h2>Selamat Datang di SATRIA</h2>
       <p class="login-sub">Masuk untuk memantau RKA, realisasi CAPEX/OPEX, dan anggaran divisi.</p>
       <form (ngSubmit)="submit()" novalidate>
-        <label for="uid">User ID</label>
-        <input id="uid" name="uid" [(ngModel)]="userId" placeholder="Masukkan user ID" autocomplete="username">
+        <label for="uid">Username</label>
+        <input id="uid" name="uid" [(ngModel)]="userId" placeholder="Username Windows / email kantor" autocomplete="username">
         <label for="pwd">Kata Sandi</label>
         <div class="pwd-wrap">
-          <input id="pwd" name="pwd" [type]="showPwd?'text':'password'" [(ngModel)]="password" placeholder="Masukkan kata sandi" autocomplete="current-password">
+          <input id="pwd" name="pwd" [type]="showPwd?'text':'password'" [(ngModel)]="password" placeholder="Kata sandi Windows" autocomplete="current-password">
           <button type="button" class="pwd-toggle" (click)="showPwd=!showPwd">{{showPwd?'Sembunyikan':'Tampilkan'}}</button>
         </div>
         <div class="login-row"><label class="check"><input type="checkbox" name="ingat" [(ngModel)]="ingat"> Ingat saya</label><a class="login-link">Lupa kata sandi?</a></div>
@@ -53,14 +54,20 @@ export class LoginPage implements OnInit, OnDestroy {
 
   submit(){
     this.error='';
-    if(!this.userId.trim()||!this.password){this.error='User ID dan kata sandi wajib diisi.';return;}
+    if(!this.userId.trim()||!this.password){this.error='Username dan kata sandi wajib diisi.';return;}
     this.loading=true;
-    // TODO: ganti dengan pemanggilan API login saat backend auth tersedia.
-    setTimeout(()=>{
-      this.auth.login(this.userId,this.password,this.ingat);
-      this.loading=false;
-      const target=this.route.snapshot.queryParamMap.get('redirect');
-      this.router.navigateByUrl(target&&target.startsWith('/')&&!target.startsWith('/login')?target:'/dashboard');
-    },400);
+    this.auth.login(this.userId,this.password,this.ingat).subscribe({
+      next:()=>{
+        this.loading=false;
+        const target=this.route.snapshot.queryParamMap.get('redirect');
+        this.router.navigateByUrl(target&&target.startsWith('/')&&!target.startsWith('/login')?target:'/dashboard');
+      },
+      error:(e:HttpErrorResponse)=>{
+        this.loading=false; this.password='';
+        this.error=e.status===0?'Server SATRIA tidak dapat dihubungi. Coba lagi beberapa saat.'
+          :e.status===503?'Server Active Directory tidak dapat dihubungi. Hubungi tim IT.'
+          :e.error?.message||'Login gagal. Coba lagi.';
+      }
+    });
   }
 }

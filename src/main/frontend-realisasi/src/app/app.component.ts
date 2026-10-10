@@ -51,7 +51,7 @@ import { AuthService } from './core/auth.service';
           <span class="lang"><b>ID</b> | EN</span>
           <div class="user-chip">
             <div class="avatar small">{{initials}}</div>
-            <div class="user-meta"><b>{{auth.user()?.nama}}</b><small>Budget Management</small></div>
+            <div class="user-meta"><b>{{auth.user()?.nama||auth.user()?.username}}</b><small>{{auth.user()?.departemen||auth.user()?.jabatan||auth.user()?.username}}</small></div>
           </div>
           <button class="btn-logout" (click)="logout()" title="Keluar">Keluar</button>
         </div>
@@ -76,7 +76,7 @@ export class AppComponent {
       if(this.isRkaActive()) this.rkaOpen=true;
     });
   }
-  get initials(){ const n=this.auth.user()?.nama||''; return n.split(/[\s._-]+/).filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join('')||'U'; }
+  get initials(){ const n=this.auth.user()?.nama||this.auth.user()?.username||''; return n.split(/[\s._-]+/).filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join('')||'U'; }
   isRkaActive(){ const url=this.router.url; return url.startsWith('/rka')||url.startsWith('/pekerjaan'); }
   toggleRka(){ if(this.collapsed){ this.collapsed=false; this.rkaOpen=true; } else this.rkaOpen=!this.rkaOpen; }
   logout(){ this.auth.logout(); this.router.navigateByUrl('/login'); }

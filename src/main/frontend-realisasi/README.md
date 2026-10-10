@@ -2,10 +2,11 @@
 
 Frontend Angular untuk backend `backend-realisasi`.
 
-## Login (sementara)
-Halaman `/login` masih tampilan saja: user ID dan kata sandi apa pun diterima, sesi disimpan di browser
-(`src/app/core/auth.service.ts`). Semua halaman lain dilindungi `authGuard`. Saat API login tersedia, cukup ganti isi
-`AuthService.login()` dan `LoginPage.submit()`.
+## Login
+Halaman `/login` memanggil `POST /api/auth/login` (username + password Active Directory). Token disimpan di browser
+(`localStorage` bila "Ingat saya", selain itu `sessionStorage`) dan dikirim sebagai `Authorization: Bearer` oleh
+`src/app/core/auth.interceptor.ts`. Jawaban 401 dari API (sesi habis) mengembalikan user ke halaman login.
+Di backend profil dev, username apa pun bisa login dengan password `dev`.
 
 Foto latar login: `public/sarinah-building.jpg` (ganti dengan foto resolusi tinggi bila ada).
 

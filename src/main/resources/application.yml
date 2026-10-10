@@ -18,6 +18,10 @@ server:
 
 app:
   timezone: Asia/Jakarta
+  auth:
+    # true = semua /api/** (kecuali /api/auth/login) wajib header Authorization: Bearer <token>
+    required: ${AUTH_REQUIRED:true}
+    session-hours: ${AUTH_SESSION_HOURS:12}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 
@@ -30,3 +34,16 @@ management:
     web:
       exposure:
         include: health,info
+
+# Active Directory. Password service account HANYA lewat env LDAP_BIND_PASSWORD, jangan ditulis di file.
+ldap:
+  enabled: ${LDAP_ENABLED:true}
+  url: ${LDAP_URL:ldap://10.0.7.12:389}
+  domain: ${LDAP_DOMAIN:sarinah.net}
+  base-dn: ${LDAP_BASE_DN:DC=sarinah,DC=net}
+  # Opsional: batasi pencarian user ke OU tertentu, contoh OU=Users,DC=sarinah,DC=net
+  user-search-base: ${LDAP_USER_SEARCH_BASE:}
+  manager-dn: ${LDAP_MANAGER_DN:itgroup@sarinah.net}
+  manager-password: ${LDAP_BIND_PASSWORD:}
+  connect-timeout-ms: 5000
+  read-timeout-ms: 10000

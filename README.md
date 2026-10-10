@@ -52,6 +52,41 @@ Aturan perhitungan:
 - Tipe (OPEX/CAPEX) program kerja dan pekerjaan diwarisi dari mata anggaran.
 - Program kerja yang masih punya pekerjaan tidak bisa dihapus (409).
 
+## Login Active Directory (LDAP)
+
+`POST /api/auth/login` dengan `{"username": "budi.santoso", "password": "..."}` (format `SARINAH\budi.santoso`
+dan `budi.santoso@sarinah.net` juga diterima). Backend bind ke AD sebagai `username@sarinah.net`, membaca
+`displayName`, `mail`, `department`, `title`, lalu menyimpan/memperbarui baris di tabel `app_user`
+(plus `last_login_at`). Jawaban berisi `token`; kirim sebagai `Authorization: Bearer <token>` ke semua `/api/**`.
+Token berlaku 12 jam (`AUTH_SESSION_HOURS`), hanya hash-nya yang disimpan di tabel `user_session`.
+
+| Method | Path | Keterangan |
+|---|---|---|
+| POST | `/api/auth/login` | 200 token + data user, 401 password salah / user dinonaktifkan, 503 AD tidak terjangkau |
+| GET | `/api/auth/me` | User dari token |
+| POST | `/api/auth/logout` | Hapus token |
+| GET | `/api/users` | User yang pernah login (data dari AD) |
+
+Set `aktif=false` di `app_user` untuk memblokir user walau password AD-nya benar.
+
+Variabel lingkungan:
+
+| Variabel | Default |
+|---|---|
+| `LDAP_URL` | `ldap://10.0.7.12:389` |
+| `LDAP_DOMAIN` | `sarinah.net` |
+| `LDAP_BASE_DN` | `DC=sarinah,DC=net` |
+| `LDAP_USER_SEARCH_BASE` | kosong (pakai base DN) |
+| `LDAP_MANAGER_DN` | `itgroup@sarinah.net` |
+| `LDAP_BIND_PASSWORD` | kosong. **Isi lewat env, jangan ditulis di file/commit.** |
+| `LDAP_ENABLED` | `true` (prod), `false` di profil dev/test |
+| `AUTH_REQUIRED` | `true` (prod), `false` di profil dev/test |
+
+Profil dev/test tidak memakai AD: username apa pun bisa login dengan password `dev`.
+Untuk mencoba AD dari dev: `LDAP_ENABLED=true AUTH_REQUIRED=true mvn spring-boot:run -Dspring-boot.run.profiles=dev`.
+
+Database yang sudah berjalan: jalankan `psql -f db/migrasi_v4_login_ldap.sql` (atau biarkan `ddl-auto=update`).
+
 ## Endpoint
 
 Semua filter `companyId`, `divisiId`, `tahun`, `tipe` opsional (kosong = "Semua tahun" / semua entitas).
@@ -97,6 +132,6 @@ curl -X POST localhost:8080/api/pekerjaan/1/realisasi -H 'Content-Type: applicat
 
 ## Belum termasuk
 
-Autentikasi/otorisasi (scope perusahaan per user), audit trail, notifikasi, modul Non Budget,
+Otorisasi per peran/scope perusahaan (login AD sudah ada), audit trail, notifikasi, modul Non Budget,
 Executive Attention/Escalations. Struktur service sudah dipisah sehingga Spring Security bisa ditambahkan
 di atasnya.
