@@ -19,6 +19,8 @@ services:
       DB_URL: jdbc:postgresql://db:5432/realisasi
       DB_USERNAME: realisasi
       DB_PASSWORD: realisasi
+      LDAP_URL: ${LDAP_URL:-ldap://10.0.7.12:389}
+      LDAP_BIND_PASSWORD: ${LDAP_BIND_PASSWORD:-}
     ports:
       - "8080:8080"
 

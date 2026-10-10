@@ -12,3 +12,9 @@ spring:
     console:
       enabled: true
       path: /h2-console
+# Tanpa AD: semua username diterima dengan password "dev" (set LDAP_ENABLED=true untuk mencoba AD asli).
+ldap:
+  enabled: ${LDAP_ENABLED:false}
+app:
+  auth:
+    required: ${AUTH_REQUIRED:false}

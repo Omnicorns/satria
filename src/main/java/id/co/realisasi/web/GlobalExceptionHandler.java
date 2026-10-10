@@ -1,5 +1,7 @@
 package id.co.realisasi.web;
 
+import id.co.realisasi.auth.AuthException;
+import id.co.realisasi.auth.DirectoryUnavailableException;
 import id.co.realisasi.service.BusinessException;
 import id.co.realisasi.service.NotFoundException;
 import id.co.realisasi.web.dto.ErrorResponse;
@@ -23,6 +25,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotFoundException.class)
     ResponseEntity<ErrorResponse> notFound(NotFoundException e) {
         return build(HttpStatus.NOT_FOUND, e.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(AuthException.class)
+    ResponseEntity<ErrorResponse> unauthorized(AuthException e) {
+        return build(HttpStatus.UNAUTHORIZED, e.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(DirectoryUnavailableException.class)
+    ResponseEntity<ErrorResponse> directoryDown(DirectoryUnavailableException e) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), List.of());
     }
 
     @ExceptionHandler(BusinessException.class)
