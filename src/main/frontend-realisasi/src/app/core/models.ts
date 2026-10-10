@@ -57,3 +57,9 @@ export interface GroupOverview {
   topCapexUsulan:TopItem[];
 }
 export interface OverviewRow { id:number; kode:string; nama:string; induk?:string; rka:number; serapan:number; persenOpex?:number|null; persenCapex?:number|null; persenTotal:number; usulan:number; usulanVsSerapan?:number|null; }
+
+/** Hasil sync user + departemen dari Active Directory. */
+export interface LdapSyncResult { totalUserAd:number; userBaru:number; userDiperbarui:number; totalDepartemen:number; departemenBaru:number; userTidakAdaDiAd:number; waktu:string; }
+export interface LdapUserRow { id:number; username:string; nama:string|null; email:string|null; jabatan:string|null; aktif:boolean; lastLoginAt:string|null; }
+/** id null = grup "(Tanpa departemen)". */
+export interface LdapDepartemenGroup { id:number|null; nama:string; divisiId:number|null; divisiNama:string|null; jumlahUser:number; lastSyncAt:string|null; users:LdapUserRow[]; }

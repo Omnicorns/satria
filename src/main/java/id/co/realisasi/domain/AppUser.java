@@ -4,6 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,6 +41,11 @@ public class AppUser extends BaseEntity {
     @Column(length = 200)
     private String jabatan;
 
+    /** Departemen AD (null bila atribut department kosong). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ldap_departemen_id")
+    private LdapDepartemen ldapDepartemen;
+
     @Column(name = "user_principal_name", length = 200)
     private String userPrincipalName;
 
@@ -53,4 +61,8 @@ public class AppUser extends BaseEntity {
 
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
+
+    /** Terakhir kali data user diperbarui dari AD lewat sync (bukan login). */
+    @Column(name = "last_sync_at")
+    private LocalDateTime lastSyncAt;
 }

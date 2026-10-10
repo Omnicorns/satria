@@ -186,3 +186,6 @@ html,body{background:var(--bg)}
   .login-card{position:relative;right:auto;top:auto;transform:none;margin:28px auto 40px}
   .login-shade{background:linear-gradient(180deg,rgba(5,5,10,.55),rgba(5,5,10,.85))}
 }
+/* Pengguna & Departemen AD */
+.dept-panel{margin-bottom:12px}.dept-head{cursor:pointer;padding-bottom:16px!important;align-items:center;gap:12px}.dept-head h3{display:flex;align-items:center;gap:8px}.chev-sm{display:inline-block;width:12px;color:#94a3b8}.dept-map select{border:1px solid #dbe2ea;background:#fff;border-radius:9px;padding:7px 9px;font-size:11px;min-width:200px}
+@media(max-width:760px){.dept-head{flex-direction:column;align-items:flex-start}.dept-map select{min-width:0;width:100%}}
