@@ -13,7 +13,7 @@ import { AuthService } from './core/auth.service';
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">
-          <img th:src="@{/logo2.png}" src="/logo2.png" alt="Logo Admin">
+          <img src="logo2.png" alt="Logo Admin">
         </div>
         <div class="brand-text"><b>SATRIA</b><small>Tracking Realisasi & Anggaran</small></div>
         <button type="button" class="drawer-close" (click)="setMenu(false)" aria-label="Tutup menu">✕</button>
