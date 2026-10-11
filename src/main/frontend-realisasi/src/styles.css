@@ -151,7 +151,7 @@ html,body{background:var(--bg)}
 
 /* ============================ LOGIN ============================ */
 .login-page{position:relative;min-height:100vh;overflow:hidden;color:#fff;font-family:Inter,Arial,sans-serif}
-.login-bg{position:absolute;inset:0;background:url('/sarinah-building.jpg') center 30%/cover no-repeat;transform:scale(1.04);animation:kenburns 24s ease-in-out infinite alternate}
+.login-bg{position:absolute;inset:0;background:url('../public/sarinah-building.jpg') center 30%/cover no-repeat;transform:scale(1.04);animation:kenburns 24s ease-in-out infinite alternate}
 .login-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,5,10,.85) 0%,rgba(5,5,10,.55) 45%,rgba(5,5,10,.35) 100%),linear-gradient(0deg,rgba(0,0,0,.55),transparent 40%)}
 @keyframes kenburns{from{transform:scale(1.04)}to{transform:scale(1.12) translateX(-1.5%)}}
 .login-top{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:26px 6vw}

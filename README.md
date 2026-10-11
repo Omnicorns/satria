@@ -158,3 +158,36 @@ curl -X POST localhost:8080/api/pekerjaan/1/realisasi -H 'Content-Type: applicat
 Otorisasi per peran/scope perusahaan (login AD sudah ada), audit trail, notifikasi, modul Non Budget,
 Executive Attention/Escalations. Struktur service sudah dipisah sehingga Spring Security bisa ditambahkan
 di atasnya.
+
+## Frontend & deploy (satu jar)
+
+Frontend Angular ada di `src/main/frontend-realisasi`. Hasil build-nya ditulis langsung ke
+`src/main/resources/static` dan **ikut di-commit**, jadi `mvn clean package` sudah menghasilkan satu jar
+berisi API + UI (sama seperti Talent Pool). Server/Jenkins tidak perlu Node.
+
+Setiap kali frontend diubah:
+
+```bash
+cd src/main/frontend-realisasi
+npm ci          # sekali saja / bila package-lock berubah
+npm run build   # base href /satria/, output ke ../resources/static
+# commit perubahan di src/main/resources/static bersama kode frontend
+```
+
+Di server aplikasi berjalan di port 8040 di belakang nginx pada path `/satria/`:
+
+```nginx
+location = /satria { return 301 /satria/; }
+location ^~ /satria/ {
+    proxy_pass http://127.0.0.1:8040/;
+    proxy_set_header Host               $host;
+    proxy_set_header X-Real-IP          $remote_addr;
+    proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto  $scheme;
+    proxy_set_header X-Forwarded-Host   $host;
+    proxy_set_header X-Forwarded-Prefix /satria;
+    client_max_body_size 10m;
+}
+```
+
+Untuk development tetap `npm start` (http://localhost:4200, base href `/`, `/api` di-proxy ke backend :8040).
