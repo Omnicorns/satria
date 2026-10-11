@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
@@ -14,8 +14,9 @@ import { AuthService } from './core/auth.service';
       <div class="brand">
         <div class="brand-mark">S</div>
         <div class="brand-text"><b>SATRIA</b><small>Tracking Realisasi & Anggaran</small></div>
+        <button type="button" class="drawer-close" (click)="setMenu(false)" aria-label="Tutup menu">✕</button>
       </div>
-      <nav (click)="menuOpen=false">
+      <nav (click)="onNavClick($event)">
         <div class="nav-label">MENU UTAMA</div>
         <a routerLink="/dashboard" routerLinkActive="active" title="Executive Dashboard">
           <svg class="ico" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg><span>Executive Dashboard</span></a>
@@ -43,10 +44,10 @@ import { AuthService } from './core/auth.service';
         </button>
       </div>
     </aside>
-    <div class="backdrop" (click)="menuOpen=false"></div>
+    <div class="backdrop" (click)="setMenu(false)"></div>
     <main class="main">
       <header class="topbar">
-        <button class="icon-btn mobile-menu" (click)="menuOpen=!menuOpen" aria-label="Menu">☰</button>
+        <button class="icon-btn mobile-menu" (click)="setMenu(!menuOpen)" aria-label="Buka menu" [attr.aria-expanded]="menuOpen">☰</button>
         <div class="top-heading"><div class="eyebrow">{{section}}</div><b class="top-title">{{title}}</b></div>
         <div class="top-actions">
           <span class="top-date">{{today}}</span>
@@ -76,8 +77,13 @@ export class AppComponent {
       const d=r.snapshot.data;
       this.bare=!!d['bare']; this.title=d['title']||''; this.section=d['section']||'';
       if(this.isRkaActive()) this.rkaOpen=true;
+      this.setMenu(false); // drawer mobile tertutup setiap pindah halaman
     });
   }
+  /** Buka/tutup drawer menu (mobile); scroll halaman dikunci selama drawer terbuka. */
+  setMenu(open:boolean){ this.menuOpen=open; document.body.classList.toggle('no-scroll',open); }
+  onNavClick(e:Event){ if((e.target as HTMLElement).closest('a')) this.setMenu(false); }
+  @HostListener('document:keydown.escape') onEscape(){ if(this.menuOpen) this.setMenu(false); }
   get initials(){ const n=this.auth.user()?.nama||this.auth.user()?.username||''; return n.split(/[\s._-]+/).filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join('')||'U'; }
   isRkaActive(){ const url=this.router.url; return url.startsWith('/rka')||url.startsWith('/pekerjaan'); }
   toggleRka(){ if(this.collapsed){ this.collapsed=false; this.rkaOpen=true; } else this.rkaOpen=!this.rkaOpen; }
