@@ -12,7 +12,7 @@ import { AuthService } from '../../core/auth.service';
   <header class="login-top">
     <div class="satria-logo">
     <span class="satria-mark">
-    <img th:src="@{/logo2.png}" src="/logo2.png" alt="Logo Admin">
+    <img src="logo2.png" alt="Logo Admin">
     </span>
     <div><b>SATRIA</b><small>by Sarinah</small></div></div>
     <nav class="login-links"><a>Tentang</a><a>Panduan</a
