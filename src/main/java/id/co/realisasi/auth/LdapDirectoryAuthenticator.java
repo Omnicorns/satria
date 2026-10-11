@@ -124,10 +124,13 @@ public class LdapDirectoryAuthenticator implements DirectoryAuthenticator {
      */
     @Override
     public List<DirectoryUser> listUsers() {
-        if (props.managerDn() == null || props.managerDn().isBlank()
-                || props.managerPassword() == null || props.managerPassword().isEmpty()) {
+        if (props.managerDn() == null || props.managerDn().isBlank()) {
             throw new DirectoryUnavailableException(
-                    "Service account LDAP belum diatur (ldap.manager-dn dan env LDAP_BIND_PASSWORD)", null);
+                    "Service account LDAP belum diatur: isi env LDAP_MANAGER_DN (contoh itgroup@sarinah.net)", null);
+        }
+        if (props.managerPassword() == null || props.managerPassword().isEmpty()) {
+            throw new DirectoryUnavailableException("Password service account LDAP (" + props.managerDn()
+                    + ") belum diatur: set environment variable LDAP_BIND_PASSWORD lalu restart backend", null);
         }
         String principal = props.managerDn().contains("@") || props.managerDn().contains("=")
                 ? props.managerDn() : props.managerDn() + "@" + props.domain();
