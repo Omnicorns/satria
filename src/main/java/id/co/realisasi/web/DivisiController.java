@@ -1,6 +1,7 @@
 package id.co.realisasi.web;
 
 import id.co.realisasi.service.DivisiService;
+import id.co.realisasi.web.dto.PageResponse;
 import id.co.realisasi.web.dto.DivisiDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,17 @@ public class DivisiController {
     @GetMapping
     public List<DivisiDto.Response> list(@RequestParam(required = false) Long companyId) {
         return service.findAll(companyId);
+    }
+
+    /** Dipakai tabel master: ?page=0&size=20&sort=nama,asc&q=...; tanpa page tetap mengembalikan list penuh. */
+    @GetMapping(params = "page")
+    public PageResponse<DivisiDto.Response> page(@RequestParam(required = false) Long companyId,
+                                                  @RequestParam(required = false) Boolean aktif,
+                                                  @RequestParam(required = false) String q,
+                                                  @RequestParam int page,
+                                                  @RequestParam(required = false) Integer size,
+                                                  @RequestParam(required = false) String sort) {
+        return service.page(companyId, aktif, q, page, size, sort);
     }
 
     @GetMapping("/{id}")

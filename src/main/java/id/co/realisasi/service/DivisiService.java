@@ -3,16 +3,23 @@ package id.co.realisasi.service;
 import id.co.realisasi.domain.Divisi;
 import id.co.realisasi.repository.DivisiRepository;
 import id.co.realisasi.web.dto.DivisiDto;
+import id.co.realisasi.web.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class DivisiService {
+
+    private static final Map<String, String> SORT = Map.of(
+            "kode", "d.kode", "nama", "d.nama", "companyNama", "c.nama", "aktif", "d.aktif");
 
     private final DivisiRepository repository;
     private final CompanyService companyService;
@@ -20,6 +27,14 @@ public class DivisiService {
     @Transactional(readOnly = true)
     public List<DivisiDto.Response> findAll(Long companyId) {
         return repository.search(companyId).stream().map(DivisiService::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<DivisiDto.Response> page(Long companyId, Boolean aktif, String q,
+                                                 Integer page, Integer size, String sort) {
+        Pageable pageable = Paging.of(page, size, sort, SORT, Sort.by("c.nama", "d.nama", "d.id"));
+        return PageResponse.of(repository.page(companyId, aktif, Paging.like(q), pageable),
+                list -> list.stream().map(DivisiService::toResponse).toList(), null);
     }
 
     @Transactional(readOnly = true)

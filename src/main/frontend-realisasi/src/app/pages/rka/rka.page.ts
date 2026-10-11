@@ -1,32 +1,33 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { Subject, Subscription, debounceTime, forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { clamp, downloadBlob, errMsg, money, yearOptions } from '../../core/format';
-import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, TipeAnggaran } from '../../core/models';
+import { PagerComponent } from '../../core/pager.component';
+import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, RkaSummary, TipeAnggaran } from '../../core/models';
 
-@Component({selector:'app-rka',standalone:true,imports:[CommonModule,FormsModule,RouterLink],template:`
+@Component({selector:'app-rka',standalone:true,imports:[CommonModule,FormsModule,RouterLink,PagerComponent],template:`
 <div class="page-head">
   <div><div class="eyebrow">BUDGET & RKA</div><h1>Monitoring RKA</h1><p>Kelola program kerja, pagu, realisasi, dan capaian per mata anggaran per divisi.</p></div>
   <div class="head-actions"><button class="btn secondary" (click)="downloadTemplate()">↓ Template Excel</button><button class="btn secondary" (click)="exportExcel()">⇩ Export</button><button class="btn primary" (click)="openCreate()">＋ Tambah Program</button></div>
 </div>
 <div class="filter-card">
   <div><label>Perusahaan</label><select [(ngModel)]="companyId" (change)="companyChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select></div>
-  <div><label>Divisi</label><select [(ngModel)]="divisiId" (change)="load()"><option [ngValue]="null">Semua</option><option *ngFor="let d of filteredDivisi" [ngValue]="d.id">{{d.nama}}</option></select></div>
-  <div><label>Tahun</label><select [(ngModel)]="tahun" (change)="load()"><option [ngValue]="null">Semua tahun</option><option *ngFor="let y of years" [ngValue]="y">{{y}}</option></select></div>
-  <div><label>Tipe</label><select [(ngModel)]="tipe" (change)="load()"><option [ngValue]="null">Semua</option><option value="OPEX">OPEX</option><option value="CAPEX">CAPEX</option></select></div>
-  <div class="filter-search"><label>Cari</label><input [(ngModel)]="q" placeholder="COA / program / divisi"></div>
+  <div><label>Divisi</label><select [(ngModel)]="divisiId" (change)="filterChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let d of filteredDivisi" [ngValue]="d.id">{{d.nama}}</option></select></div>
+  <div><label>Tahun</label><select [(ngModel)]="tahun" (change)="filterChanged()"><option [ngValue]="null">Semua tahun</option><option *ngFor="let y of years" [ngValue]="y">{{y}}</option></select></div>
+  <div><label>Tipe</label><select [(ngModel)]="tipe" (change)="filterChanged()"><option [ngValue]="null">Semua</option><option value="OPEX">OPEX</option><option value="CAPEX">CAPEX</option></select></div>
+  <div class="filter-search"><label>Cari</label><input [(ngModel)]="q" (ngModelChange)="search$.next()" placeholder="COA / program / divisi"></div>
   <div class="file-action"><label>Import RKA</label><input #file type="file" accept=".xlsx" hidden (change)="importExcel($event)"><button class="btn secondary full" [disabled]="importing" (click)="file.click()">{{importing?'Mengimpor…':'↑ Import Excel'}}</button></div>
 </div>
 <div *ngIf="message" class="alert success">{{message}}</div>
 <div *ngIf="error" class="alert danger">{{error}}<ul *ngIf="importErrors.length" class="error-list"><li *ngFor="let e of importErrors">{{e}}</li></ul></div>
 <section class="kpi-grid small-kpi">
-  <article class="kpi"><span>Total Planning</span><strong>{{money(total('planningBudget'))}}</strong><small>{{filtered.length}} program kerja</small></article>
-  <article class="kpi"><span>Total Pagu</span><strong>{{money(total('pagu'))}}</strong><small>plafon aktif</small></article>
-  <article class="kpi"><span>Total Realisasi</span><strong>{{money(total('realisasi'))}}</strong><small>serapan berjalan</small></article>
-  <article class="kpi"><span>Sisa Anggaran</span><strong>{{money(total('sisa'))}}</strong><small>belum terealisasi</small></article>
+  <article class="kpi"><span>Total Planning</span><strong>{{money(summary?.totalPlanning)}}</strong><small>{{total}} program kerja</small></article>
+  <article class="kpi"><span>Total Pagu</span><strong>{{money(summary?.totalPagu)}}</strong><small>plafon aktif</small></article>
+  <article class="kpi"><span>Total Realisasi</span><strong>{{money(summary?.totalRealisasi)}}</strong><small>serapan berjalan</small></article>
+  <article class="kpi"><span>Sisa Anggaran</span><strong>{{money(summary?.totalSisa)}}</strong><small>belum terealisasi</small></article>
 </section>
 
 <section class="dashboard-grid two-one" *ngIf="monitoring as m">
@@ -54,12 +55,13 @@ import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, TipeAnggara
 </section>
 
 <article class="panel table-panel">
-  <div class="panel-head"><div><h3>Daftar Program Kerja</h3><p>{{filtered.length}} data ditemukan</p></div></div>
+  <div class="panel-head"><div><h3>Daftar Program Kerja</h3><p>{{total}} data ditemukan</p></div></div>
   <div class="table-scroll"><table><thead><tr><th>COA / Mata Anggaran</th><th>Divisi</th><th>Tahun</th><th>Tipe</th><th>Planning</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Capaian</th><th>Status</th><th></th></tr></thead><tbody>
-    <tr *ngFor="let r of filtered"><td><b>{{r.namaMataAnggaran}}</b><small class="cell-sub">{{r.noCoa}}</small></td><td>{{r.divisiNama}}<small class="cell-sub">{{r.companyNama}}</small></td><td>{{r.tahun}}</td><td><span class="badge" [class.capex]="r.tipe==='CAPEX'">{{r.tipe}}</span></td><td>{{money(r.planningBudget)}}</td><td>{{r.pagu==null?'-':money(r.pagu)}}</td><td>{{money(r.realisasi)}}</td><td [class.neg]="r.sisa<0">{{money(r.sisa)}}</td><td><div class="progress-cell"><span>{{r.capaianPersen | number:'1.1-1'}}%</span><div class="bar-bg"><i [style.width.%]="clamp(r.capaianPersen)"></i></div></div></td><td><span class="badge" [class.success]="r.status==='OPEN'">{{r.status}}</span></td>
+    <tr *ngFor="let r of rows"><td><b>{{r.namaMataAnggaran}}</b><small class="cell-sub">{{r.noCoa}}</small></td><td>{{r.divisiNama}}<small class="cell-sub">{{r.companyNama}}</small></td><td>{{r.tahun}}</td><td><span class="badge" [class.capex]="r.tipe==='CAPEX'">{{r.tipe}}</span></td><td>{{money(r.planningBudget)}}</td><td>{{r.pagu==null?'-':money(r.pagu)}}</td><td>{{money(r.realisasi)}}</td><td [class.neg]="r.sisa<0">{{money(r.sisa)}}</td><td><div class="progress-cell"><span>{{r.capaianPersen | number:'1.1-1'}}%</span><div class="bar-bg"><i [style.width.%]="clamp(r.capaianPersen)"></i></div></div></td><td><span class="badge" [class.success]="r.status==='OPEN'">{{r.status}}</span></td>
       <td class="row-actions"><a class="table-action" routerLink="/pekerjaan" [queryParams]="{programKerjaId:r.id}">Pekerjaan</a><button class="table-action" (click)="openEdit(r)">Edit</button><button class="table-action danger" (click)="remove(r)">Hapus</button></td></tr>
-    <tr *ngIf="!filtered.length"><td colspan="11"><div class="empty">Belum ada data RKA untuk filter ini.</div></td></tr>
+    <tr *ngIf="!rows.length"><td colspan="11"><div class="empty">Belum ada data RKA untuk filter ini.</div></td></tr>
   </tbody></table></div>
+  <app-pager [page]="page" [size]="size" [total]="total" (pageChange)="page=$event;load()" (sizeChange)="size=$event;filterChanged()"></app-pager>
 </article>
 
 <div class="modal-backdrop" *ngIf="modal" (click)="modal=false"></div>
@@ -79,25 +81,33 @@ import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, TipeAnggara
   <div class="modal-actions"><button class="btn ghost" (click)="modal=false">Batal</button><button class="btn primary" [disabled]="saving" (click)="save()">{{saving?'Menyimpan…':'Simpan Program'}}</button></div>
 </section>
 `})
-export class RkaPage implements OnInit {
+export class RkaPage implements OnInit, OnDestroy {
   companies:Company[]=[];divisi:Divisi[]=[];coa:MataAnggaran[]=[];rows:ProgramKerja[]=[];selectableCoa:MataAnggaran[]=[];monitoring?:MonitoringRka;
   companyId:number|null=null;divisiId:number|null=null;tahun:number|null=new Date().getFullYear();tipe:TipeAnggaran|null=null;q='';years=yearOptions();
   modal=false;editing?:ProgramKerja;saving=false;importing=false;message='';error='';formError='';importErrors:string[]=[];
   form:any={};
+  /** Tabel per halaman dari server; summary = total KPI atas seluruh data yang cocok dengan filter. */
+  page=0;size=20;total=0;summary?:RkaSummary;
+  readonly search$=new Subject<void>();private subs=new Subscription();private rowsSub?:Subscription;
   readonly money=money; readonly clamp=clamp;
   constructor(private api:ApiService){}
-  ngOnInit(){forkJoin([this.api.companies(),this.api.divisiAnggaran(),this.api.coa()]).subscribe({next:([c,d,m])=>{this.companies=c;this.divisi=d;this.coa=m;this.load();},error:e=>this.error=errMsg(e,'Master data gagal dimuat.')});}
+  ngOnDestroy(){this.subs.unsubscribe();this.rowsSub?.unsubscribe();}
+  ngOnInit(){this.subs.add(this.search$.pipe(debounceTime(300)).subscribe(()=>this.filterChanged()));forkJoin([this.api.companies(),this.api.divisiAnggaran(),this.api.coa()]).subscribe({next:([c,d,m])=>{this.companies=c;this.divisi=d;this.coa=m;this.load();},error:e=>this.error=errMsg(e,'Master data gagal dimuat.')});}
   get filteredDivisi(){return this.companyId?this.divisi.filter(d=>d.companyId===this.companyId):this.divisi;}
-  get filtered(){const x=this.q.toLowerCase().trim();return !x?this.rows:this.rows.filter(r=>[r.noCoa,r.namaMataAnggaran,r.divisiNama,r.companyNama,r.keterangan].join(' ').toLowerCase().includes(x));}
   private get filters(){return {companyId:this.companyId,divisiId:this.divisiId,tahun:this.tahun,tipe:this.tipe};}
-  companyChanged(){this.divisiId=null;this.load();}
+  companyChanged(){this.divisiId=null;this.filterChanged();}
+  filterChanged(){this.page=0;this.load();}
+  /** Muat ulang halaman aktif (dipanggil juga setelah simpan/hapus/import). */
   load(){
-    this.api.rka(this.filters).subscribe({next:r=>this.rows=r,error:e=>this.error=errMsg(e,'Data RKA gagal dimuat.')});
+    this.rowsSub?.unsubscribe();
+    this.rowsSub=this.api.rkaPage({...this.filters,q:this.q,page:this.page,size:this.size}).subscribe({next:r=>{
+      this.rows=r.items;this.total=r.total;this.summary=r.summary;
+      if(this.page>0&&this.page>=r.totalPages){this.page=Math.max(0,r.totalPages-1);this.load();}
+    },error:e=>this.error=errMsg(e,'Data RKA gagal dimuat.')});
     this.api.monitoring(this.filters).subscribe({next:m=>this.monitoring=m,error:()=>this.monitoring=undefined});
   }
   filterCoa(){this.selectableCoa=this.coa.filter(c=>c.tipe===this.form.tipe && (c.aktif || c.id===this.form.mataAnggaranId));}
   tipeChanged(){this.filterCoa();if(!this.selectableCoa.some(c=>c.id===this.form.mataAnggaranId))this.form.mataAnggaranId=null;}
-  total(k:'planningBudget'|'pagu'|'realisasi'|'sisa'){return this.filtered.reduce((a,r)=>a+(Number(k==='pagu'?(r.pagu??r.planningBudget):r[k])||0),0);}
 
   topItems(m:MonitoringRka){return [...(m.perMataAnggaran||[])].sort((a,b)=>(b.pagu||0)-(a.pagu||0)).slice(0,10);}
   scale(v:number,m:MonitoringRka){const max=Math.max(1,...this.topItems(m).map(i=>Math.max(i.planning||0,i.pagu||0,i.realisasi||0)));return clamp((v||0)/max*100);}

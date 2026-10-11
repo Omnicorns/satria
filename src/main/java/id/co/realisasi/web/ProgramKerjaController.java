@@ -4,6 +4,7 @@ import id.co.realisasi.domain.TipeAnggaran;
 import id.co.realisasi.excel.RkaExcelService;
 import id.co.realisasi.service.BusinessException;
 import id.co.realisasi.service.ProgramKerjaService;
+import id.co.realisasi.web.dto.PageResponse;
 import id.co.realisasi.web.dto.ImportResult;
 import id.co.realisasi.web.dto.ProgramKerjaDto;
 import jakarta.validation.Valid;
@@ -47,6 +48,19 @@ public class ProgramKerjaController {
                                                @RequestParam(required = false) Integer tahun,
                                                @RequestParam(required = false) TipeAnggaran tipe) {
         return service.list(companyId, divisiId, tahun, tipe);
+    }
+
+    /** Tabel Daftar Program Kerja: ?page=0&size=20&q=...; summary = total KPI atas seluruh data yang cocok. */
+    @GetMapping(params = "page")
+    public PageResponse<ProgramKerjaDto.Response> page(@RequestParam(required = false) Long companyId,
+                                                        @RequestParam(required = false) Long divisiId,
+                                                        @RequestParam(required = false) Integer tahun,
+                                                        @RequestParam(required = false) TipeAnggaran tipe,
+                                                        @RequestParam(required = false) String q,
+                                                        @RequestParam int page,
+                                                        @RequestParam(required = false) Integer size,
+                                                        @RequestParam(required = false) String sort) {
+        return service.page(companyId, divisiId, tahun, tipe, q, page, size, sort);
     }
 
     @GetMapping("/{id}")

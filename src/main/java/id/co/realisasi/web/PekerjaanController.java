@@ -2,6 +2,7 @@ package id.co.realisasi.web;
 
 import id.co.realisasi.domain.TipeAnggaran;
 import id.co.realisasi.service.PekerjaanService;
+import id.co.realisasi.web.dto.PageResponse;
 import id.co.realisasi.web.dto.PekerjaanDto;
 import id.co.realisasi.web.dto.RealisasiDto;
 import jakarta.validation.Valid;
@@ -36,6 +37,27 @@ public class PekerjaanController {
                                             @RequestParam(required = false) String pic,
                                             @RequestParam(required = false) Long programKerjaId) {
         return service.list(companyId, divisiId, tahun, tipe, pic, programKerjaId);
+    }
+
+    /** Tabel Daftar Pekerjaan: ?page=0&size=20&q=...; summary = jumlah per status atas seluruh data yang cocok. */
+    @GetMapping(params = "page")
+    public PageResponse<PekerjaanDto.Response> page(@RequestParam(required = false) Long companyId,
+                                                     @RequestParam(required = false) Long divisiId,
+                                                     @RequestParam(required = false) Integer tahun,
+                                                     @RequestParam(required = false) TipeAnggaran tipe,
+                                                     @RequestParam(required = false) String pic,
+                                                     @RequestParam(required = false) Long programKerjaId,
+                                                     @RequestParam(required = false) String q,
+                                                     @RequestParam int page,
+                                                     @RequestParam(required = false) Integer size,
+                                                     @RequestParam(required = false) String sort) {
+        return service.page(companyId, divisiId, tahun, tipe, pic, programKerjaId, q, page, size, sort);
+    }
+
+    /** Daftar PIC untuk dropdown filter (tidak terpengaruh halaman). */
+    @GetMapping("/pic")
+    public List<String> pic() {
+        return service.picList();
     }
 
     @GetMapping("/{id}")

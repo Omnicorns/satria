@@ -1,39 +1,40 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { Subject, Subscription, debounceTime, forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { errMsg } from '../../core/format';
+import { PagerComponent } from '../../core/pager.component';
 import { Company, Divisi, LevelOrganisasi, MataAnggaran, TipeAnggaran } from '../../core/models';
 
-@Component({selector:'app-master',standalone:true,imports:[CommonModule,FormsModule],template:`
+@Component({selector:'app-master',standalone:true,imports:[CommonModule,FormsModule,PagerComponent],template:`
 <div class="page-head"><div><div class="eyebrow">CONFIGURATION</div><h1>Master Data</h1><p>Kelola perusahaan, divisi, dan chart of accounts yang dipakai pada RKA.</p></div><button class="btn primary" (click)="openAdd()">＋ Tambah {{tabLabel}}</button></div>
-<div class="segmented"><button [class.active]="tab==='company'" (click)="setTab('company')">Perusahaan <span>{{companies.length}}</span></button><button [class.active]="tab==='divisi'" (click)="setTab('divisi')">Divisi <span>{{divisi.length}}</span></button><button [class.active]="tab==='coa'" (click)="setTab('coa')">Mata Anggaran <span>{{coa.length}}</span></button></div>
+<div class="segmented"><button [class.active]="tab==='company'" (click)="setTab('company')">Perusahaan <span>{{companies.length}}</span></button><button [class.active]="tab==='divisi'" (click)="setTab('divisi')">Divisi <span>{{divisi.length}}</span></button><button [class.active]="tab==='coa'" (click)="setTab('coa')">Mata Anggaran <span>{{coaCount}}</span></button></div>
 <div *ngIf="error" class="alert danger">{{error}}</div><div *ngIf="message" class="alert success">{{message}}</div>
 
 <article class="panel table-panel" *ngIf="tab==='company'"><div class="panel-head"><div><h3>Perusahaan / Entitas</h3><p>Daftar entitas di dalam group</p></div></div><div class="table-scroll"><table><thead><tr><th>Kode</th><th>Nama</th><th>Group</th><th>Divisi</th><th></th></tr></thead><tbody><tr *ngFor="let x of companies"><td><b>{{x.kode}}</b></td><td>{{x.nama}}</td><td>{{x.namaGrup || '-'}}</td><td>{{countDivisi(x.id)}}</td><td><button class="table-action" (click)="editCompany(x)">Edit</button></td></tr><tr *ngIf="!companies.length"><td colspan="5"><div class="empty">Belum ada perusahaan.</div></td></tr></tbody></table></div></article>
 
 <ng-container *ngIf="tab==='divisi'">
   <div class="filter-card">
-    <div><label>Perusahaan</label><select [(ngModel)]="fCompany"><option [ngValue]="null">Semua</option><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select></div>
-    <div><label>Level</label><select [(ngModel)]="fLevel"><option [ngValue]="null">Semua</option><option *ngFor="let l of levels" [ngValue]="l">{{levelLabel(l)}}</option></select></div>
-    <div><label>Status</label><select [(ngModel)]="fAktif"><option [ngValue]="null">Semua</option><option [ngValue]="true">Aktif</option><option [ngValue]="false">Nonaktif</option></select></div>
-    <div class="filter-search"><label>Cari</label><input [(ngModel)]="q" placeholder="Kode / nama / induk"></div>
+    <div><label>Perusahaan</label><select [(ngModel)]="fCompany" (ngModelChange)="filterChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select></div>
+    <div><label>Level</label><select [(ngModel)]="fLevel" (ngModelChange)="filterChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let l of levels" [ngValue]="l">{{levelLabel(l)}}</option></select></div>
+    <div><label>Status</label><select [(ngModel)]="fAktif" (ngModelChange)="filterChanged()"><option [ngValue]="null">Semua</option><option [ngValue]="true">Aktif</option><option [ngValue]="false">Nonaktif</option></select></div>
+    <div class="filter-search"><label>Cari</label><input [(ngModel)]="q" (ngModelChange)="search$.next()" placeholder="Kode / nama"></div>
   </div>
-  <article class="panel table-panel"><div class="panel-head"><div><h3>Divisi / Unit Organisasi</h3><p>Anggaran (RKA) diisi pada unit level <b>Divisi</b> yang aktif · {{filteredDivisi.length}} data</p></div></div><div class="table-scroll"><table><thead><tr><th>Kode</th><th>Nama</th><th>Level</th><th>Induk</th><th>Perusahaan</th><th>Dept Odoo</th><th>Status</th><th></th></tr></thead><tbody>
-    <tr *ngFor="let x of filteredDivisi"><td><b>{{x.kode}}</b></td><td>{{x.nama}}<small class="cell-sub" *ngIf="x.path && x.path!==x.nama">{{x.path}}</small></td><td><span class="badge" [class.capex]="x.level!=='DIVISI'">{{levelLabel(x.level)}}</span></td><td>{{x.parentNama || '-'}}</td><td>{{x.companyNama}}</td><td>{{x.odooDepartmentId ?? '-'}}</td><td><span class="badge" [class.success]="x.aktif" [class.danger]="!x.aktif">{{x.aktif?'Aktif':'Nonaktif'}}</span></td><td><button class="table-action" (click)="editDivisi(x)">Edit</button></td></tr>
-    <tr *ngIf="!filteredDivisi.length"><td colspan="8"><div class="empty">Tidak ada data.</div></td></tr></tbody></table></div></article>
+  <article class="panel table-panel"><div class="panel-head"><div><h3>Divisi / Unit Organisasi</h3><p>Anggaran (RKA) diisi pada unit level <b>Divisi</b> yang aktif · {{total}} data</p></div></div><div class="table-scroll"><table><thead><tr><th>Kode</th><th>Nama</th><th>Level</th><th>Induk</th><th>Perusahaan</th><th>Dept Odoo</th><th>Status</th><th></th></tr></thead><tbody>
+    <tr *ngFor="let x of divisiRows"><td><b>{{x.kode}}</b></td><td>{{x.nama}}<small class="cell-sub" *ngIf="x.path && x.path!==x.nama">{{x.path}}</small></td><td><span class="badge" [class.capex]="x.level!=='DIVISI'">{{levelLabel(x.level)}}</span></td><td>{{x.parentNama || '-'}}</td><td>{{x.companyNama}}</td><td>{{x.odooDepartmentId ?? '-'}}</td><td><span class="badge" [class.success]="x.aktif" [class.danger]="!x.aktif">{{x.aktif?'Aktif':'Nonaktif'}}</span></td><td><button class="table-action" (click)="editDivisi(x)">Edit</button></td></tr>
+    <tr *ngIf="!divisiRows.length"><td colspan="8"><div class="empty">{{loading?'Memuat…':'Tidak ada data.'}}</div></td></tr></tbody></table></div><app-pager [page]="page" [size]="size" [total]="total" (pageChange)="goPage($event)" (sizeChange)="setSize($event)"></app-pager></article>
 </ng-container>
 
 <ng-container *ngIf="tab==='coa'">
   <div class="filter-card">
-    <div><label>Tipe</label><select [(ngModel)]="fTipe"><option [ngValue]="null">Semua</option><option value="OPEX">OPEX</option><option value="CAPEX">CAPEX</option></select></div>
-    <div><label>Status</label><select [(ngModel)]="fAktif"><option [ngValue]="null">Semua</option><option [ngValue]="true">Aktif</option><option [ngValue]="false">Nonaktif</option></select></div>
-    <div class="filter-search"><label>Cari</label><input [(ngModel)]="q" placeholder="No COA / nama / kategori"></div>
+    <div><label>Tipe</label><select [(ngModel)]="fTipe" (ngModelChange)="filterChanged()"><option [ngValue]="null">Semua</option><option value="OPEX">OPEX</option><option value="CAPEX">CAPEX</option></select></div>
+    <div><label>Status</label><select [(ngModel)]="fAktif" (ngModelChange)="filterChanged()"><option [ngValue]="null">Semua</option><option [ngValue]="true">Aktif</option><option [ngValue]="false">Nonaktif</option></select></div>
+    <div class="filter-search"><label>Cari</label><input [(ngModel)]="q" (ngModelChange)="search$.next()" placeholder="No COA / nama / kategori"></div>
   </div>
-  <article class="panel table-panel"><div class="panel-head"><div><h3>Mata Anggaran / COA</h3><p>Master akun OPEX dan CAPEX · {{filteredCoa.length}} data</p></div></div><div class="table-scroll"><table><thead><tr><th>No COA</th><th>Nama Mata Anggaran</th><th>Tipe</th><th>Kategori</th><th>Status</th><th></th></tr></thead><tbody>
-    <tr *ngFor="let x of filteredCoa"><td><b>{{x.noCoa}}</b></td><td>{{x.nama}}</td><td><span class="badge" [class.capex]="x.tipe==='CAPEX'">{{x.tipe}}</span></td><td>{{x.kategori||'-'}}</td><td><span class="badge" [class.success]="x.aktif" [class.danger]="!x.aktif">{{x.aktif?'Aktif':'Nonaktif'}}</span></td><td><button class="table-action" (click)="editCoa(x)">Edit</button></td></tr>
-    <tr *ngIf="!filteredCoa.length"><td colspan="6"><div class="empty">Tidak ada data.</div></td></tr></tbody></table></div></article>
+  <article class="panel table-panel"><div class="panel-head"><div><h3>Mata Anggaran / COA</h3><p>Master akun OPEX dan CAPEX · {{total}} data</p></div></div><div class="table-scroll"><table><thead><tr><th>No COA</th><th>Nama Mata Anggaran</th><th>Tipe</th><th>Kategori</th><th>Status</th><th></th></tr></thead><tbody>
+    <tr *ngFor="let x of coaRows"><td><b>{{x.noCoa}}</b></td><td>{{x.nama}}</td><td><span class="badge" [class.capex]="x.tipe==='CAPEX'">{{x.tipe}}</span></td><td>{{x.kategori||'-'}}</td><td><span class="badge" [class.success]="x.aktif" [class.danger]="!x.aktif">{{x.aktif?'Aktif':'Nonaktif'}}</span></td><td><button class="table-action" (click)="editCoa(x)">Edit</button></td></tr>
+    <tr *ngIf="!coaRows.length"><td colspan="6"><div class="empty">{{loading?'Memuat…':'Tidak ada data.'}}</div></td></tr></tbody></table></div><app-pager [page]="page" [size]="size" [total]="total" (pageChange)="goPage($event)" (sizeChange)="setSize($event)"></app-pager></article>
 </ng-container>
 
 <div class="modal-backdrop" *ngIf="modal" (click)="modal=false"></div><section class="modal" *ngIf="modal"><div class="modal-head"><div><small>MASTER DATA</small><h2>{{editing?'Ubah':'Tambah'}} {{tabLabel}}</h2></div><button class="icon-btn" (click)="modal=false">×</button></div>
@@ -52,21 +53,39 @@ import { Company, Divisi, LevelOrganisasi, MataAnggaran, TipeAnggaran } from '..
 <div class="form-grid" *ngIf="tab==='coa'"><div><label>No COA *</label><input [(ngModel)]="form.noCoa" inputmode="numeric" placeholder="10 digit, contoh 6101010001"></div><div><label>Tipe *</label><select [(ngModel)]="form.tipe"><option value="OPEX">OPEX</option><option value="CAPEX">CAPEX</option></select></div><div class="span-2"><label>Nama Mata Anggaran *</label><input [(ngModel)]="form.nama" maxlength="200"></div><div><label>Kategori</label><input [(ngModel)]="form.kategori"></div><div><label>Status</label><select [(ngModel)]="form.aktif"><option [ngValue]="true">Aktif</option><option [ngValue]="false">Nonaktif</option></select></div></div>
 <div class="modal-actions"><button class="btn ghost" (click)="modal=false">Batal</button><button class="btn primary" [disabled]="saving" (click)="save()">{{saving?'Menyimpan…':'Simpan'}}</button></div></section>
 `})
-export class MasterPage implements OnInit {
-  tab:'company'|'divisi'|'coa'='company';companies:Company[]=[];divisi:Divisi[]=[];coa:MataAnggaran[]=[];
+export class MasterPage implements OnInit, OnDestroy {
+  tab:'company'|'divisi'|'coa'='company';companies:Company[]=[];divisi:Divisi[]=[];
+  /** Isi tabel divisi / COA per halaman dari server; divisi penuh tetap dipakai untuk pilihan induk dan jumlah per perusahaan. */
+  divisiRows:Divisi[]=[];coaRows:MataAnggaran[]=[];coaCount=0;page=0;size=20;total=0;loading=false;
+  readonly search$=new Subject<void>();private subs=new Subscription();private tableSub?:Subscription;
   modal=false;saving=false;editing:any;form:any={};message='';error='';formError='';
   levels:LevelOrganisasi[]=['HEAD_OFFICE','DIREKTORAT','DIVISI','UNIT'];
   fCompany:number|null=null;fLevel:LevelOrganisasi|null=null;fAktif:boolean|null=null;fTipe:TipeAnggaran|null=null;q='';
   constructor(private api:ApiService){}
-  ngOnInit(){this.reload();}
-  reload(){forkJoin([this.api.companies(),this.api.divisi(),this.api.coa()]).subscribe({next:([a,b,c])=>{this.companies=a;this.divisi=b;this.coa=c;},error:e=>this.error=errMsg(e,'Master data gagal dimuat.')});}
+  ngOnInit(){this.subs.add(this.search$.pipe(debounceTime(300)).subscribe(()=>this.filterChanged()));this.reload();}
+  ngOnDestroy(){this.subs.unsubscribe();this.tableSub?.unsubscribe();}
+  reload(){forkJoin([this.api.companies(),this.api.divisi(),this.api.coaPage({page:0,size:1})]).subscribe({next:([a,b,c])=>{this.companies=a;this.divisi=b;this.coaCount=c.total;this.loadTable();},error:e=>this.error=errMsg(e,'Master data gagal dimuat.')});}
+  /** Ambil satu halaman tabel tab aktif sesuai filter dan kata kunci. */
+  loadTable(){
+    this.tableSub?.unsubscribe();
+    if(this.tab==='company')return;
+    const base={q:this.q,page:this.page,size:this.size,aktif:this.fAktif};
+    this.loading=true;
+    const done=()=>this.loading=false;
+    const fail=(e:unknown)=>{done();this.error=errMsg(e,'Data gagal dimuat.');};
+    this.tableSub=this.tab==='divisi'
+      ?this.api.divisiPage({...base,companyId:this.fCompany,level:this.fLevel}).subscribe({next:r=>{done();this.divisiRows=r.items;this.total=r.total;this.clampPage(r.totalPages);},error:fail})
+      :this.api.coaPage({...base,tipe:this.fTipe}).subscribe({next:r=>{done();this.coaRows=r.items;this.total=r.total;this.clampPage(r.totalPages);},error:fail});
+  }
+  /** Setelah hapus/filter halaman bisa melewati halaman terakhir: mundur ke halaman terakhir yang ada. */
+  private clampPage(totalPages:number){if(this.page>0&&this.page>=totalPages){this.page=Math.max(0,totalPages-1);this.loadTable();}}
+  filterChanged(){this.page=0;this.loadTable();}
+  goPage(p:number){this.page=p;this.loadTable();}
+  setSize(s:number){this.size=s;this.page=0;this.loadTable();}
   get tabLabel(){return this.tab==='company'?'Perusahaan':this.tab==='divisi'?'Divisi':'Mata Anggaran';}
-  setTab(t:'company'|'divisi'|'coa'){this.tab=t;this.q='';this.fAktif=null;}
+  setTab(t:'company'|'divisi'|'coa'){this.tab=t;this.q='';this.fAktif=null;this.page=0;this.total=0;this.loadTable();}
   levelLabel(l:string){return ({HEAD_OFFICE:'Head Office',DIREKTORAT:'Direktorat',DIVISI:'Divisi',UNIT:'Unit'} as Record<string,string>)[l]||l;}
   countDivisi(companyId:number){return this.divisi.filter(d=>d.companyId===companyId&&d.level==='DIVISI').length;}
-  private match(text:(string|null|undefined)[]){const x=this.q.toLowerCase().trim();return !x||text.join(' ').toLowerCase().includes(x);}
-  get filteredDivisi(){return this.divisi.filter(d=>(this.fCompany==null||d.companyId===this.fCompany)&&(this.fLevel==null||d.level===this.fLevel)&&(this.fAktif==null||d.aktif===this.fAktif)&&this.match([d.kode,d.nama,d.parentNama,d.path]));}
-  get filteredCoa(){return this.coa.filter(c=>(this.fTipe==null||c.tipe===this.fTipe)&&(this.fAktif==null||c.aktif===this.fAktif)&&this.match([c.noCoa,c.nama,c.kategori]));}
   /** Induk harus satu perusahaan dan bukan dirinya sendiri. */
   get parentOptions(){return this.divisi.filter(d=>d.companyId===this.form.companyId&&d.id!==this.editing?.id);}
 

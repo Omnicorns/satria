@@ -8,8 +8,12 @@ import id.co.realisasi.domain.TipeAnggaran;
 import id.co.realisasi.repository.PekerjaanRepository;
 import id.co.realisasi.repository.ProgramKerjaRepository;
 import id.co.realisasi.repository.RealisasiRepository;
+import id.co.realisasi.web.dto.PageResponse;
 import id.co.realisasi.web.dto.ProgramKerjaDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +31,11 @@ import static id.co.realisasi.service.Money.percent;
 @Transactional
 public class ProgramKerjaService {
 
+    private static final Map<String, String> SORT = Map.of(
+            "noCoa", "m.noCoa", "namaMataAnggaran", "m.nama", "divisiNama", "d.nama", "tahun", "p.tahun",
+            "tipe", "p.tipe", "planningBudget", "p.planningBudget", "pagu", "p.pagu", "status", "p.status",
+            "createdAt", "p.createdAt");
+
     private final ProgramKerjaRepository repository;
     private final PekerjaanRepository pekerjaanRepository;
     private final RealisasiRepository realisasiRepository;
@@ -43,6 +52,28 @@ public class ProgramKerjaService {
         List<ProgramKerja> list = search(companyId, divisiId, tahun, tipe);
         Map<Long, BigDecimal> realisasi = realisasiPerProgram(list);
         return list.stream().map(p -> toResponse(p, realisasi.get(p.getId()))).toList();
+    }
+
+    /** Daftar berhalaman; summary berisi total seluruh data yang cocok untuk kartu KPI. */
+    @Transactional(readOnly = true)
+    public PageResponse<ProgramKerjaDto.Response> page(Long companyId, Long divisiId, Integer tahun,
+                                                       TipeAnggaran tipe, String q,
+                                                       Integer page, Integer size, String sort) {
+        String like = Paging.like(q);
+        Pageable pageable = Paging.of(page, size, sort, SORT, Sort.by(Sort.Order.desc("p.tahun"),
+                Sort.Order.desc("p.createdAt"), Sort.Order.desc("p.id")));
+        Page<ProgramKerja> result = repository.page(companyId, divisiId, tahun, tipe, like, pageable);
+
+        Object[] totals = repository.totals(companyId, divisiId, tahun, tipe, like).get(0);
+        BigDecimal planning = nz((BigDecimal) totals[0]);
+        BigDecimal plafon = nz((BigDecimal) totals[1]);
+        BigDecimal realisasi = nz(realisasiRepository.sumForRka(companyId, divisiId, tahun, tipe, like));
+        var summary = new ProgramKerjaDto.Summary(planning, plafon, realisasi, plafon.subtract(realisasi));
+
+        return PageResponse.of(result, list -> {
+            Map<Long, BigDecimal> real = realisasiPerProgram(list);
+            return list.stream().map(p -> toResponse(p, real.get(p.getId()))).toList();
+        }, summary);
     }
 
     @Transactional(readOnly = true)

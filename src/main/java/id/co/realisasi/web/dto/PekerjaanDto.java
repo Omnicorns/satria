@@ -80,4 +80,8 @@ public final class PekerjaanDto {
                                     id.co.realisasi.domain.StatusMilestone status, String catatan,
                                     boolean terlambat) {
     }
+
+    /** Ringkasan status dan total anggaran atas seluruh pekerjaan yang cocok dengan filter. */
+    public record Summary(long onTrack, long terlambat, long selesai, BigDecimal totalAnggaran) {
+    }
 }

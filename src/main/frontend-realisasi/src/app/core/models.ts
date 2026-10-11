@@ -5,6 +5,12 @@ export type StatusMilestone = 'BELUM_MULAI' | 'BERJALAN' | 'SELESAI';
 export type LevelOrganisasi = 'HEAD_OFFICE' | 'DIREKTORAT' | 'DIVISI' | 'UNIT';
 export type JenisPeriode = 'SINGLE_YEAR' | 'MULTI_YEAR';
 
+/** Hasil list berhalaman dari backend (?page=...). page dimulai dari 0; summary = total atas seluruh data yang cocok. */
+export interface Page<T, S = undefined> { items:T[]; total:number; page:number; size:number; totalPages:number; summary?:S; }
+export interface PageQuery { q?:string|null; page:number; size:number; sort?:string|null; }
+export interface RkaSummary { totalPlanning:number; totalPagu:number; totalRealisasi:number; totalSisa:number; }
+export interface PekerjaanSummary { onTrack:number; terlambat:number; selesai:number; totalAnggaran:number; }
+
 export interface Company { id:number; kode:string; nama:string; namaGrup?:string; logoUrl?:string; }
 export interface Divisi {
   id:number; companyId:number; companyNama:string; kode:string; nama:string;
