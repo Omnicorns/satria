@@ -8,3 +8,5 @@ target/
 node_modules/
 .angular/
 src/main/frontend-realisasi/dist/
+# Hasil build Angular, dibuat ulang oleh mvn package (exec-maven-plugin)
+src/main/resources/static/

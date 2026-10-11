@@ -21,6 +21,9 @@
         <java.version>17</java.version>
         <poi.version>5.4.1</poi.version>
         <springdoc.version>2.8.13</springdoc.version>
+        <!-- Frontend Angular dibangun saat mvn package (butuh node + npm di PATH). -Dfrontend.skip=true untuk melewati. -->
+        <frontend.dir>${project.basedir}/src/main/frontend-realisasi</frontend.dir>
+        <frontend.skip>false</frontend.skip>
     </properties>
 
     <dependencies>
@@ -108,6 +111,46 @@
                 <configuration>
                     <argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
                 </configuration>
+            </plugin>
+            <!-- npm ci + npm run build: hasilnya ke src/main/resources/static (lihat angular.json) lalu ikut masuk jar. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <executable>npm</executable>
+                    <workingDirectory>${frontend.dir}</workingDirectory>
+                    <skip>${frontend.skip}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>npm-ci</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>ci</argument>
+                                <argument>--no-audit</argument>
+                                <argument>--no-fund</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-build</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>run</argument>
+                                <argument>build</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

@@ -161,18 +161,12 @@ di atasnya.
 
 ## Frontend & deploy (satu jar)
 
-Frontend Angular ada di `src/main/frontend-realisasi`. Hasil build-nya ditulis langsung ke
-`src/main/resources/static` dan **ikut di-commit**, jadi `mvn clean package` sudah menghasilkan satu jar
-berisi API + UI (sama seperti Talent Pool). Server/Jenkins tidak perlu Node.
+Frontend Angular ada di `src/main/frontend-realisasi`. `mvn clean package` otomatis menjalankan
+`npm ci` dan `npm run build` (exec-maven-plugin), hasilnya ditulis ke `src/main/resources/static`
+(base href `/satria/`) lalu ikut masuk jar. Folder `static` tidak di-commit.
 
-Setiap kali frontend diubah:
-
-```bash
-cd src/main/frontend-realisasi
-npm ci          # sekali saja / bila package-lock berubah
-npm run build   # base href /satria/, output ke ../resources/static
-# commit perubahan di src/main/resources/static bersama kode frontend
-```
+Syarat mesin build (Jenkins/laptop): `node` (>= 18.19) dan `npm` ada di PATH, serta bisa mengakses
+registry npm. Untuk build backend saja tanpa Node: `mvn package -Dfrontend.skip=true`.
 
 Di server aplikasi berjalan di port 8040 di belakang nginx pada path `/satria/`:
 
