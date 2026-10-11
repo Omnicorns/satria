@@ -2,6 +2,7 @@ package id.co.realisasi.web;
 
 import id.co.realisasi.domain.TipeAnggaran;
 import id.co.realisasi.service.MataAnggaranService;
+import id.co.realisasi.web.dto.PageResponse;
 import id.co.realisasi.web.dto.MataAnggaranDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,17 @@ public class MataAnggaranController {
     @GetMapping
     public List<MataAnggaranDto.Response> list(@RequestParam(required = false) TipeAnggaran tipe) {
         return service.findAll(tipe);
+    }
+
+    /** Dipakai tabel master: ?page=0&size=20&sort=noCoa,asc&q=...; tanpa page tetap mengembalikan list penuh. */
+    @GetMapping(params = "page")
+    public PageResponse<MataAnggaranDto.Response> page(@RequestParam(required = false) TipeAnggaran tipe,
+                                                        @RequestParam(required = false) Boolean aktif,
+                                                        @RequestParam(required = false) String q,
+                                                        @RequestParam int page,
+                                                        @RequestParam(required = false) Integer size,
+                                                        @RequestParam(required = false) String sort) {
+        return service.page(tipe, aktif, q, page, size, sort);
     }
 
     @GetMapping("/{id}")

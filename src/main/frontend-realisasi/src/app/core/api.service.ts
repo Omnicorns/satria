@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { LdapDepartemenGroup, LdapSyncResult } from './models';
+import { LdapDepartemenGroup, LdapSyncResult, Page, PageQuery, PekerjaanSummary, RkaSummary } from './models';
 import { CapexOpex, Company, Divisi, Financial, GroupOverview, ImportResult, LevelOrganisasi, MataAnggaran, Milestone, MonitoringRka, Pekerjaan, ProgramKerja, ProgressItem, RealisasiItem, TipeAnggaran } from './models';
 
 export interface Filters { companyId?:number|null; divisiId?:number|null; tahun?:number|null; tipe?:TipeAnggaran|null; pic?:string|null; programKerjaId?:number|null; }
@@ -25,14 +25,17 @@ export class ApiService {
   /** Tanpa filter = semua unit organisasi. Untuk pengisian anggaran pakai {level:'DIVISI', aktif:true}. */
   divisi(filter:DivisiFilter = {}):Observable<Divisi[]> { return this.http.get<Divisi[]>(`${this.base}/divisi`, {params:this.params(filter)}); }
   divisiAnggaran():Observable<Divisi[]> { return this.divisi({level:'DIVISI', aktif:true}); }
+  divisiPage(filter:DivisiFilter&PageQuery):Observable<Page<Divisi>> { return this.http.get<Page<Divisi>>(`${this.base}/divisi`, {params:this.params(filter)}); }
   createDivisi(body:any){ return this.http.post<Divisi>(`${this.base}/divisi`, body); }
   updateDivisi(id:number,body:any){ return this.http.put<Divisi>(`${this.base}/divisi/${id}`, body); }
 
   coa(tipe?:TipeAnggaran|null):Observable<MataAnggaran[]> { return this.http.get<MataAnggaran[]>(`${this.base}/mata-anggaran`, {params:this.params({tipe})}); }
+  coaPage(filter:{tipe?:TipeAnggaran|null; aktif?:boolean|null}&PageQuery):Observable<Page<MataAnggaran>> { return this.http.get<Page<MataAnggaran>>(`${this.base}/mata-anggaran`, {params:this.params(filter)}); }
   createCoa(body:any){ return this.http.post<MataAnggaran>(`${this.base}/mata-anggaran`, body); }
   updateCoa(id:number,body:any){ return this.http.put<MataAnggaran>(`${this.base}/mata-anggaran/${id}`, body); }
 
   rka(filters:Filters={}):Observable<ProgramKerja[]> { return this.http.get<ProgramKerja[]>(`${this.base}/rka`, {params:this.params(filters)}); }
+  rkaPage(filters:Filters&PageQuery):Observable<Page<ProgramKerja,RkaSummary>> { return this.http.get<Page<ProgramKerja,RkaSummary>>(`${this.base}/rka`, {params:this.params(filters)}); }
   createRka(body:any){ return this.http.post<ProgramKerja>(`${this.base}/rka`, body); }
   updateRka(id:number,body:any){ return this.http.put<ProgramKerja>(`${this.base}/rka/${id}`, body); }
   deleteRka(id:number){ return this.http.delete<void>(`${this.base}/rka/${id}`); }
@@ -41,6 +44,8 @@ export class ApiService {
   importRka(file:File){ const fd=new FormData(); fd.append('file',file); return this.http.post<ImportResult>(`${this.base}/rka/excel/import`,fd); }
 
   pekerjaan(filters:Filters={}):Observable<Pekerjaan[]> { return this.http.get<Pekerjaan[]>(`${this.base}/pekerjaan`, {params:this.params(filters)}); }
+  pekerjaanPage(filters:Filters&PageQuery):Observable<Page<Pekerjaan,PekerjaanSummary>> { return this.http.get<Page<Pekerjaan,PekerjaanSummary>>(`${this.base}/pekerjaan`, {params:this.params(filters)}); }
+  pekerjaanPic():Observable<string[]> { return this.http.get<string[]>(`${this.base}/pekerjaan/pic`); }
   getPekerjaan(id:number):Observable<Pekerjaan> { return this.http.get<Pekerjaan>(`${this.base}/pekerjaan/${id}`); }
   createPekerjaan(body:any){ return this.http.post<Pekerjaan>(`${this.base}/pekerjaan`,body); }
   updatePekerjaan(id:number,body:any){ return this.http.put<Pekerjaan>(`${this.base}/pekerjaan/${id}`,body); }

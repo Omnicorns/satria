@@ -13,9 +13,13 @@ import id.co.realisasi.repository.MilestonePekerjaanRepository;
 import id.co.realisasi.repository.PekerjaanRepository;
 import id.co.realisasi.repository.ProgressPekerjaanRepository;
 import id.co.realisasi.repository.RealisasiRepository;
+import id.co.realisasi.web.dto.PageResponse;
 import id.co.realisasi.web.dto.PekerjaanDto;
 import id.co.realisasi.web.dto.RealisasiDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +38,11 @@ import static id.co.realisasi.service.Money.percent;
 @RequiredArgsConstructor
 @Transactional
 public class PekerjaanService {
+
+    private static final Map<String, String> SORT = Map.of(
+            "nama", "k.nama", "pic", "k.pic", "divisiNama", "d.nama", "tahun", "k.tahun", "anggaran", "k.anggaran",
+            "progress", "k.progress", "tanggalMulai", "k.tanggalMulai", "estimasiSelesai", "k.estimasiSelesai",
+            "createdAt", "k.createdAt");
 
     private final PekerjaanRepository repository;
     private final ProgressPekerjaanRepository progressRepository;
@@ -57,6 +66,37 @@ public class PekerjaanService {
         Map<Long, BigDecimal> realisasi = realisasiPerPekerjaan(list);
         LocalDate today = LocalDate.now(clock);
         return list.stream().map(k -> toResponse(k, realisasi.get(k.getId()), today)).toList();
+    }
+
+    /** Daftar berhalaman; summary menghitung status atas seluruh data yang cocok, bukan hanya halaman ini. */
+    @Transactional(readOnly = true)
+    public PageResponse<PekerjaanDto.Response> page(Long companyId, Long divisiId, Integer tahun, TipeAnggaran tipe,
+                                                    String pic, Long programKerjaId, String q,
+                                                    Integer page, Integer size, String sort) {
+        String like = Paging.like(q);
+        LocalDate today = LocalDate.now(clock);
+        Pageable pageable = Paging.of(page, size, sort, SORT,
+                Sort.by(Sort.Order.desc("k.createdAt"), Sort.Order.desc("k.id")));
+        Page<Pekerjaan> result = repository.page(companyId, divisiId, tahun, tipe, pic, programKerjaId, like,
+                pageable);
+
+        Object[] s = repository.summary(companyId, divisiId, tahun, tipe, pic, programKerjaId, like, today).get(0);
+        long selesai = s[0] == null ? 0 : ((Number) s[0]).longValue();
+        long terlambat = s[1] == null ? 0 : ((Number) s[1]).longValue();
+        long total = ((Number) s[2]).longValue();
+        var summary = new PekerjaanDto.Summary(total - selesai - terlambat, terlambat, selesai,
+                nz((BigDecimal) s[3]));
+
+        return PageResponse.of(result, list -> {
+            Map<Long, BigDecimal> realisasi = realisasiPerPekerjaan(list);
+            return list.stream().map(k -> toResponse(k, realisasi.get(k.getId()), today)).toList();
+        }, summary);
+    }
+
+    /** Semua PIC yang pernah dipakai, untuk dropdown filter. */
+    @Transactional(readOnly = true)
+    public List<String> picList() {
+        return repository.findDistinctPic();
     }
 
     @Transactional(readOnly = true)

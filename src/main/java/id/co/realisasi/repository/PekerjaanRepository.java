@@ -2,10 +2,14 @@ package id.co.realisasi.repository;
 
 import id.co.realisasi.domain.Pekerjaan;
 import id.co.realisasi.domain.TipeAnggaran;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +35,70 @@ public interface PekerjaanRepository extends JpaRepository<Pekerjaan, Long> {
                            @Param("tipe") TipeAnggaran tipe,
                            @Param("pic") String pic,
                            @Param("programKerjaId") Long programKerjaId);
+
+    /** Versi berhalaman untuk tabel Daftar Pekerjaan; q mencari nama / PIC / divisi / COA. */
+    @EntityGraph(attributePaths = {"programKerja", "programKerja.divisi", "programKerja.divisi.company",
+            "programKerja.mataAnggaran"})
+    @Query("""
+            select k
+            from Pekerjaan k
+              join k.programKerja p
+              join p.divisi d
+              join d.company c
+              join p.mataAnggaran m
+            where (:companyId is null or c.id = :companyId)
+              and (:divisiId is null or d.id = :divisiId)
+              and (:tahun is null or k.tahun = :tahun)
+              and (:tipe is null or k.tipe = :tipe)
+              and (:pic is null or k.pic = :pic)
+              and (:programKerjaId is null or p.id = :programKerjaId)
+              and (:q is null or lower(k.nama) like :q or lower(k.pic) like :q or lower(d.nama) like :q
+                   or lower(m.noCoa) like :q or lower(m.nama) like :q)
+            """)
+    Page<Pekerjaan> page(@Param("companyId") Long companyId,
+                    @Param("divisiId") Long divisiId,
+                    @Param("tahun") Integer tahun,
+                    @Param("tipe") TipeAnggaran tipe,
+                    @Param("pic") String pic,
+                    @Param("programKerjaId") Long programKerjaId,
+                    @Param("q") String q,
+                    Pageable pageable);
+
+    /**
+     * Ringkasan untuk kartu status: [selesai, terlambat, total, totalAnggaran].
+     * Aturan status sama dengan {@link Pekerjaan#status}.
+     */
+    @Query("""
+            select sum(case when k.progress >= 100 then 1 else 0 end),
+                   sum(case when (k.progress is null or k.progress < 100) and k.estimasiSelesai < :today
+                            then 1 else 0 end),
+                   count(k),
+                   coalesce(sum(k.anggaran), 0)
+            from Pekerjaan k
+              join k.programKerja p
+              join p.divisi d
+              join d.company c
+              join p.mataAnggaran m
+            where (:companyId is null or c.id = :companyId)
+              and (:divisiId is null or d.id = :divisiId)
+              and (:tahun is null or k.tahun = :tahun)
+              and (:tipe is null or k.tipe = :tipe)
+              and (:pic is null or k.pic = :pic)
+              and (:programKerjaId is null or p.id = :programKerjaId)
+              and (:q is null or lower(k.nama) like :q or lower(k.pic) like :q or lower(d.nama) like :q
+                   or lower(m.noCoa) like :q or lower(m.nama) like :q)
+            """)
+    List<Object[]> summary(@Param("companyId") Long companyId,
+                    @Param("divisiId") Long divisiId,
+                    @Param("tahun") Integer tahun,
+                    @Param("tipe") TipeAnggaran tipe,
+                    @Param("pic") String pic,
+                    @Param("programKerjaId") Long programKerjaId,
+                    @Param("q") String q,
+                           @Param("today") LocalDate today);
+
+    @Query("select distinct k.pic from Pekerjaan k where k.pic is not null order by k.pic")
+    List<String> findDistinctPic();
 
     @Query("""
             select k from Pekerjaan k

@@ -52,4 +52,9 @@ public final class ProgramKerjaDto {
             String keterangan,
             LocalDateTime createdAt) {
     }
+
+    /** Total untuk kartu KPI atas seluruh data yang cocok dengan filter; plafon = pagu atau planning. */
+    public record Summary(BigDecimal totalPlanning, BigDecimal totalPagu, BigDecimal totalRealisasi,
+                          BigDecimal totalSisa) {
+    }
 }

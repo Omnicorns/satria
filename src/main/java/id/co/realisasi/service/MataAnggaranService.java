@@ -4,16 +4,23 @@ import id.co.realisasi.domain.MataAnggaran;
 import id.co.realisasi.domain.TipeAnggaran;
 import id.co.realisasi.repository.MataAnggaranRepository;
 import id.co.realisasi.web.dto.MataAnggaranDto;
+import id.co.realisasi.web.dto.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class MataAnggaranService {
+
+    private static final Map<String, String> SORT = Map.of(
+            "noCoa", "m.noCoa", "nama", "m.nama", "tipe", "m.tipe", "kategori", "m.kategori", "aktif", "m.aktif");
 
     private final MataAnggaranRepository repository;
 
@@ -22,6 +29,14 @@ public class MataAnggaranService {
         List<MataAnggaran> list = tipe == null ? repository.findAllByOrderByNoCoa()
                 : repository.findByTipeOrderByNoCoa(tipe);
         return list.stream().map(MataAnggaranService::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<MataAnggaranDto.Response> page(TipeAnggaran tipe, Boolean aktif, String q,
+                                                       Integer page, Integer size, String sort) {
+        Pageable pageable = Paging.of(page, size, sort, SORT, Sort.by("m.noCoa", "m.id"));
+        return PageResponse.of(repository.page(tipe, aktif, Paging.like(q), pageable),
+                list -> list.stream().map(MataAnggaranService::toResponse).toList(), null);
     }
 
     @Transactional(readOnly = true)
