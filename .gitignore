@@ -3,3 +3,8 @@ target/
 .idea/
 *.iml
 .vscode/
+
+# Frontend: dependensi & cache build tidak di-commit (hasil build ada di src/main/resources/static)
+node_modules/
+.angular/
+src/main/frontend-realisasi/dist/

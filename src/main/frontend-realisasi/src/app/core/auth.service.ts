@@ -25,7 +25,7 @@ export class AuthService {
   get token(){ return this.session()?.token??null; }
 
   login(username:string, password:string, ingat:boolean):Observable<LoginResponse> {
-    return this.http.post<LoginResponse>('/api/auth/login',{username:username.trim(), password}).pipe(tap(res=>{
+    return this.http.post<LoginResponse>('api/auth/login',{username:username.trim(), password}).pipe(tap(res=>{
       const s:StoredSession={token:res.token, expiresAt:res.expiresAt, user:res.user};
       this.clearStorage();
       try{ (ingat?localStorage:sessionStorage).setItem(this.key,JSON.stringify(s)); }catch{ /* storage diblokir: sesi hanya di memori */ }
@@ -35,7 +35,7 @@ export class AuthService {
 
   /** Hapus token di server (best effort) lalu bersihkan sesi lokal. */
   logout(){
-    if(this.token) this.http.post('/api/auth/logout',{}).subscribe({error:()=>{}});
+    if(this.token) this.http.post('api/auth/logout',{}).subscribe({error:()=>{}});
     this.clear();
   }
 

@@ -9,7 +9,8 @@ export interface DivisiFilter { companyId?:number|null; level?:LevelOrganisasi|n
 
 @Injectable({providedIn:'root'})
 export class ApiService {
-  private readonly base = '/api';
+  // Relatif terhadap <base href>: /api saat dev (ng serve), /satria/api di server.
+  private readonly base = 'api';
   constructor(private http:HttpClient) {}
 
   private params(filters:object = {}): HttpParams {
