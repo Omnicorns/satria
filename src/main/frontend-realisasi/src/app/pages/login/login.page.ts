@@ -10,8 +10,13 @@ import { AuthService } from '../../core/auth.service';
   <div class="login-bg"></div><div class="login-shade"></div>
 
   <header class="login-top">
-    <div class="satria-logo"><span class="satria-mark">S</span><div><b>SATRIA</b><small>by Sarinah</small></div></div>
-    <nav class="login-links"><a>Tentang</a><a>Panduan</a><a>Bantuan</a><span class="lang"><b>ID</b> | EN</span></nav>
+    <div class="satria-logo">
+    <span class="satria-mark">
+    <img th:src="@{/logo2.png}" src="/logo2.png" alt="Logo Admin">
+    </span>
+    <div><b>SATRIA</b><small>by Sarinah</small></div></div>
+    <nav class="login-links"><a>Tentang</a><a>Panduan</a
+    ><a>Bantuan</a><span class="lang"><b>ID</b> | EN</span></nav>
   </header>
 
   <section class="login-hero">
@@ -27,17 +32,17 @@ import { AuthService } from '../../core/auth.service';
       <p class="login-sub">Masuk untuk memantau RKA, realisasi CAPEX/OPEX, dan anggaran divisi.</p>
       <form (ngSubmit)="submit()" novalidate>
         <label for="uid">Username</label>
-        <input id="uid" name="uid" [(ngModel)]="userId" placeholder="Username Windows / email kantor" autocomplete="username">
+        <input id="uid" name="uid" [(ngModel)]="userId" placeholder="Username Windows" autocomplete="username">
         <label for="pwd">Kata Sandi</label>
         <div class="pwd-wrap">
-          <input id="pwd" name="pwd" [type]="showPwd?'text':'password'" [(ngModel)]="password" placeholder="Kata sandi Windows" autocomplete="current-password">
+          <input id="pwd" name="pwd" [type]="showPwd?'text':'password'" [(ngModel)]="password" placeholder="password computer login" autocomplete="current-password">
           <button type="button" class="pwd-toggle" (click)="showPwd=!showPwd">{{showPwd?'Sembunyikan':'Tampilkan'}}</button>
         </div>
         <div class="login-row"><label class="check"><input type="checkbox" name="ingat" [(ngModel)]="ingat"> Ingat saya</label><a class="login-link">Lupa kata sandi?</a></div>
         <div *ngIf="error" class="login-error">{{error}}</div>
         <button type="submit" class="login-btn" [disabled]="loading">{{loading?'Memproses…':'Masuk'}}</button>
       </form>
-      <p class="login-help">Belum punya akun atau akun terkunci? <a class="login-link">Hubungi admin anggaran</a></p>
+
     </div>
     <div class="login-card-foot">© {{year}} PT Sarinah · SATRIA v1.0</div>
   </section>

@@ -40,7 +40,7 @@ import { AuthService } from './core/auth.service';
       </nav>
       <div class="sidebar-foot">
         <button type="button" class="nav-group-btn collapse-btn" (click)="collapsed=!collapsed" [title]="collapsed?'Perluas menu':'Ciutkan menu'">
-          <svg class="ico" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg><span>Ciutkan</span>
+          <svg class="ico" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg><span>Minimize</span>
         </button>
       </div>
     </aside>

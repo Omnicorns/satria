@@ -94,7 +94,24 @@ html,body{background:var(--bg)}
 /* Sidebar */
 .sidebar{background:var(--nav);border-right:1px solid #2c2c2c;padding:20px 12px;transition:width .2s}
 .brand{padding:2px 8px 22px;border-bottom:1px solid #2c2c2c;margin-bottom:8px}
-.brand-mark{background:linear-gradient(145deg,#ff2d55,#b0001f);border-radius:12px;box-shadow:0 8px 22px rgba(228,0,43,.35);font-family:Georgia,serif;font-style:italic}
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;      /* ganti sesuai ukuran yang diinginkan */
+  height: 40px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.brand-mark img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;  /* logo tidak gepeng atau terpotong */
+  display: block;
+}
 .brand-text b{font-size:18px;letter-spacing:.08em}.brand-text small{font-size:10px;color:#9a9a9a;white-space:nowrap}
 .nav-label{color:#6f6f6f;padding:18px 12px 6px;font-size:10px}
 .sidebar nav a,.nav-group-btn{color:#c9c9c9;font-size:13px;font-weight:600;padding:10px 12px;border-radius:10px}
@@ -156,7 +173,24 @@ html,body{background:var(--bg)}
 @keyframes kenburns{from{transform:scale(1.04)}to{transform:scale(1.12) translateX(-1.5%)}}
 .login-top{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:26px 6vw}
 .satria-logo{display:flex;align-items:center;gap:11px}
-.satria-mark{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#ff2d55,#b0001f);font:italic 800 22px Georgia,serif;box-shadow:0 8px 24px rgba(228,0,43,.4)}
+.satria-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;      /* ganti sesuai ukuran yang diinginkan */
+  height: 40px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.satria-mark img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;  /* logo tidak gepeng atau terpotong */
+  display: block;
+}
 .satria-logo b{display:block;font-size:20px;letter-spacing:.12em}.satria-logo small{font-size:10px;color:#cfcfcf}
 .login-links{display:flex;align-items:center;gap:30px;font-size:14px;font-weight:600}.login-links a{color:#fff;opacity:.9;cursor:pointer}.login-links a:hover{opacity:1;text-decoration:underline}
 .login-hero{position:absolute;z-index:2;left:6vw;bottom:14vh;max-width:min(620px,48vw)}
