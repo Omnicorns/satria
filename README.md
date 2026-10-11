@@ -162,11 +162,11 @@ di atasnya.
 ## Frontend & deploy (satu jar)
 
 Frontend Angular ada di `src/main/frontend-realisasi`. `mvn clean package` otomatis menjalankan
-`npm ci` dan `npm run build` (exec-maven-plugin), hasilnya ditulis ke `src/main/resources/static`
+`npm ci` dan `npm run build` (frontend-maven-plugin), hasilnya ditulis ke `src/main/resources/static`
 (base href `/satria/`) lalu ikut masuk jar. Folder `static` tidak di-commit.
 
-Syarat mesin build (Jenkins/laptop): `node` (>= 18.19) dan `npm` ada di PATH, serta bisa mengakses
-registry npm. Untuk build backend saja tanpa Node: `mvn package -Dfrontend.skip=true`.
+Node tidak perlu dipasang di mesin build: Maven mengunduh Node v22 sendiri ke `target/node`
+(di-cache di `~/.m2`). Mesin build hanya perlu akses ke nodejs.org (unduhan pertama) dan registry npm. Untuk build backend saja tanpa Node: `mvn package -Dfrontend.skip=true`.
 
 Di server aplikasi berjalan di port 8040 di belakang nginx pada path `/satria/`:
 
