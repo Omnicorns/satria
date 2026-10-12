@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.cors.CorsUtils;
 
@@ -42,6 +44,13 @@ public class AuthInterceptor implements HandlerInterceptor {
         AppUser user = authService.userForToken(token);
         request.setAttribute(USER_ATTR, user);
         return true;
+    }
+
+    /** User login pada request yang sedang berjalan (null bila tanpa token saat auth tidak wajib). */
+    public static AppUser currentUser() {
+        return RequestContextHolder.getRequestAttributes() == null ? null
+                : (AppUser) RequestContextHolder.getRequestAttributes()
+                        .getAttribute(USER_ATTR, RequestAttributes.SCOPE_REQUEST);
     }
 
     static String bearer(HttpServletRequest request) {

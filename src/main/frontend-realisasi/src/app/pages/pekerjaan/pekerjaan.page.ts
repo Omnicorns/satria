@@ -2,23 +2,25 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, Subscription, debounceTime, forkJoin } from 'rxjs';
+import { Subject, Subscription, catchError, debounceTime, forkJoin, of } from 'rxjs';
 import { ApiService } from '../../core/api.service';
+import { AuthService, SessionUser } from '../../core/auth.service';
 import { clamp, errMsg, money, tgl, today, yearOptions } from '../../core/format';
 import { PagerComponent } from '../../core/pager.component';
 import { CapexOpex, Company, Divisi, Financial, Milestone, Pekerjaan, PekerjaanSummary, ProgramKerja, ProgressItem, StatusMilestone, TipeAnggaran } from '../../core/models';
 
 @Component({selector:'app-pekerjaan',standalone:true,imports:[CommonModule,FormsModule,PagerComponent],template:`
-<div class="page-head"><div><div class="eyebrow">EXECUTION</div><h1>CAPEX / OPEX</h1><p>Pantau pekerjaan, progress, timeline, serta realisasi keuangan.</p></div><button class="btn primary" (click)="openCreate()">＋ Tambah Pekerjaan</button></div>
+<div class="page-head"><div><div class="eyebrow">EXECUTION</div><h1>CAPEX / OPEX</h1><p>Pantau pekerjaan, progress, timeline, serta realisasi keuangan.</p></div><button class="btn primary" [disabled]="tanpaDivisi" (click)="openCreate()">＋ Tambah Pekerjaan</button></div>
 <div class="filter-card">
-  <div><label>Perusahaan</label><select [(ngModel)]="companyId" (change)="companyChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select></div>
-  <div><label>Divisi</label><select [(ngModel)]="divisiId" (change)="filterChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let d of filteredDivisi" [ngValue]="d.id">{{d.nama}}</option></select></div>
+  <div><label>Perusahaan</label><select [(ngModel)]="companyId" [disabled]="terkunci" (change)="companyChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select></div>
+  <div><label>Divisi</label><select [(ngModel)]="divisiId" [disabled]="terkunci" (change)="filterChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let d of filteredDivisi" [ngValue]="d.id">{{d.nama}}</option></select></div>
   <div><label>Tahun</label><select [(ngModel)]="tahun" (change)="filterChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let y of years" [ngValue]="y">{{y}}</option></select></div>
   <div><label>Tipe</label><select [(ngModel)]="tipe" (change)="filterChanged()"><option [ngValue]="null">Semua</option><option value="OPEX">OPEX</option><option value="CAPEX">CAPEX</option></select></div>
   <div><label>PIC</label><select [(ngModel)]="pic" (change)="filterChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let p of picOptions" [ngValue]="p">{{p}}</option></select></div>
   <div class="filter-search"><label>Cari</label><input [(ngModel)]="q" (ngModelChange)="search$.next()" placeholder="Nama pekerjaan / PIC / COA"></div>
 </div>
 <div *ngIf="programFilter" class="alert info">Menampilkan pekerjaan untuk program <b>{{programFilter.noCoa}} · {{programFilter.namaMataAnggaran}}</b> ({{programFilter.divisiNama}} {{programFilter.tahun}}). <button class="link-btn" (click)="clearProgramFilter()">Tampilkan semua</button></div>
+<div *ngIf="tanpaDivisi" class="alert danger">Departemen Anda ({{user?.departemen||'kosong'}}) belum dipetakan ke divisi anggaran, sehingga pekerjaan belum bisa dibuka. Hubungi admin anggaran untuk memetakannya di menu Pengguna AD.</div>
 <div *ngIf="error" class="alert danger">{{error}}</div><div *ngIf="message" class="alert success">{{message}}</div>
 <section class="status-summary"><div><span class="status-dot green"></span><small>ON TRACK</small><strong>{{summary?.onTrack ?? 0}}</strong></div><div><span class="status-dot red"></span><small>TERLAMBAT</small><strong>{{summary?.terlambat ?? 0}}</strong></div><div><span class="status-dot blue"></span><small>SELESAI</small><strong>{{summary?.selesai ?? 0}}</strong></div><div><span class="status-dot purple"></span><small>TOTAL ANGGARAN</small><strong>{{money(summary?.totalAnggaran)}}</strong></div></section>
 
@@ -110,7 +112,11 @@ export class PekerjaanPage implements OnInit, OnDestroy {
   page=0;size=20;total=0;summary?:PekerjaanSummary;
   readonly search$=new Subject<void>();private subs=new Subscription();private rowsSub?:Subscription;
   readonly money=money;readonly clamp=clamp;readonly tgl=tgl;
-  constructor(private api:ApiService,private route:ActivatedRoute,private router:Router){}
+  /** User login terbaru dari /api/auth/me; non-admin dikunci ke divisinya (backend juga memaksa hal yang sama). */
+  user:SessionUser|null=null;
+  get terkunci(){return !!this.user&&!this.user.admin;}
+  get tanpaDivisi(){return this.terkunci&&!this.user?.divisiId;}
+  constructor(private api:ApiService,private auth:AuthService,private route:ActivatedRoute,private router:Router){}
 
   ngOnDestroy(){this.subs.unsubscribe();this.rowsSub?.unsubscribe();}
   ngOnInit(){
@@ -118,7 +124,17 @@ export class PekerjaanPage implements OnInit, OnDestroy {
     this.loadPic();
     const pk=this.route.snapshot.queryParamMap.get('programKerjaId');
     if(pk){this.programKerjaId=Number(pk);this.tahun=null;}
-    forkJoin([this.api.companies(),this.api.divisiAnggaran(),this.api.rka()]).subscribe({next:([c,d,r])=>{this.companies=c;this.divisi=d;this.rka=r;this.load();},error:e=>this.error=errMsg(e,'Master data gagal dimuat.')});
+    this.auth.refresh().pipe(catchError(()=>of(this.auth.user()))).subscribe(u=>{
+      this.user=u;
+      if(this.tanpaDivisi)return;
+      forkJoin([this.api.companies(),this.api.divisiAnggaran(),this.api.rka()]).subscribe({next:([c,d,r])=>{this.companies=c;this.divisi=d;this.rka=r;this.applyUser();this.load();},error:e=>this.error=errMsg(e,'Master data gagal dimuat.')});
+    });
+  }
+  private applyUser(){
+    const u=this.user;
+    if(!this.terkunci||!u?.divisiId)return;
+    this.divisiId=u.divisiId;this.companyId=u.companyId??null;
+    if(!this.divisi.some(d=>d.id===u.divisiId))this.divisi=[...this.divisi,{id:u.divisiId,companyId:u.companyId!,companyNama:u.companyNama||'',kode:'',nama:u.divisiNama||'',level:'DIVISI',aktif:true}];
   }
   get filteredDivisi(){return this.companyId?this.divisi.filter(d=>d.companyId===this.companyId):this.divisi;}
   get programFilter(){return this.programKerjaId?this.rka.find(r=>r.id===this.programKerjaId):undefined;}

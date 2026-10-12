@@ -114,6 +114,39 @@ class DivisiUserIntegrationTest {
     }
 
     @Test
+    void pekerjaanHanyaDivisiSendiri() throws Exception {
+        String budi = login("budi.santoso");
+        petakan("Finance & Accounting", finance);
+        long techPk = techProgram();
+        long ownPk = id(postJson(budi, "/api/rka", Map.of("divisiId", finance, "tahun", 2026,
+                "mataAnggaranId", coa, "planningBudget", 100)));
+        long techJob = id(postJson(admin, "/api/pekerjaan", Map.of("programKerjaId", techPk, "nama", "Server",
+                "pic", "Agung", "anggaran", 10)));
+        postJson(budi, "/api/pekerjaan", Map.of("programKerjaId", ownPk, "nama", "Audit", "pic", "Budi",
+                "anggaran", 5));
+
+        // Daftar dan halaman hanya divisinya walau filter meminta divisi lain.
+        mvc.perform(get("/api/pekerjaan").param("divisiId", String.valueOf(tech))
+                        .header("Authorization", "Bearer " + budi))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].nama").value("Audit"));
+        mvc.perform(get("/api/pekerjaan").param("page", "0").header("Authorization", "Bearer " + budi))
+                .andExpect(jsonPath("$.total").value(1));
+        mvc.perform(get("/api/pekerjaan").header("Authorization", "Bearer " + admin))
+                .andExpect(jsonPath("$.length()").value(2));
+
+        // Pekerjaan / program divisi lain ditolak.
+        mvc.perform(get("/api/pekerjaan/" + techJob).header("Authorization", "Bearer " + budi))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/pekerjaan/" + techJob + "/financial").header("Authorization", "Bearer " + budi))
+                .andExpect(status().isForbidden());
+        mvc.perform(delete("/api/pekerjaan/" + techJob).header("Authorization", "Bearer " + budi))
+                .andExpect(status().isForbidden());
+        send(budi, post("/api/pekerjaan"), Map.of("programKerjaId", techPk, "nama", "X", "pic", "Budi",
+                "anggaran", 1)).andExpect(status().isForbidden());
+    }
+
+    @Test
     void adminBebasMemilihDivisi() throws Exception {
         mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + admin))
                 .andExpect(jsonPath("$.admin").value(true));

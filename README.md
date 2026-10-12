@@ -91,7 +91,9 @@ struktur anggaran. Kolom `ldap_departemen.divisi_id` (opsional) memetakan depart
 
 Divisi user = divisi hasil pemetaan departemen AD-nya (tabel di atas). Di Monitoring RKA user biasa tidak memilih
 divisi: form "Tambah Program Kerja" terisi dan terkunci ke divisinya, daftar/KPI/export hanya divisinya, dan
-backend menolak (403) program kerja divisi lain, termasuk baris import Excel divisi lain. User yang departemennya
+backend menolak (403) program kerja divisi lain, termasuk baris import Excel divisi lain. Halaman CAPEX / OPEX
+(Pekerjaan) sama: filter Perusahaan/Divisi terkunci, dan pekerjaan divisi lain (detail, progress, timeline,
+realisasi) ditolak 403. User yang departemennya
 belum dipetakan ditolak dengan pesan untuk menghubungi admin. Username di `SATRIA_ADMIN_USERS` (dipisah koma,
 contoh `agung.pribadi,budi.santoso`) tetap bebas memilih divisi mana pun. `/api/auth/me` mengembalikan
 `admin`, `divisiId`, `divisiNama`.
