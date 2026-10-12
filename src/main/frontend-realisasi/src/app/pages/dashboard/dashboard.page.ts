@@ -6,11 +6,14 @@ import { ApiService } from '../../core/api.service';
 import { clamp, errMsg, moneyShort, yearOptions } from '../../core/format';
 import { CapexOpex, Company, Divisi, GroupOverview, MonitoringRka, OverviewRow, TopItem } from '../../core/models';
 
+/** Dashboard hanya untuk PT Sarinah (tanpa "Semua perusahaan"); bila tidak ada, pakai semua perusahaan yang ada. */
+function onlySarinah(c:Company[]){ const s=c.filter(x=>/sarinah/i.test(x.nama)); return s.length?s:c; }
+
 @Component({selector:'app-dashboard',standalone:true,imports:[CommonModule,FormsModule],template:`
 <div class="page-head">
   <div><div class="eyebrow">GROUP OVERVIEW</div><h1>Executive Budget Dashboard</h1><p>Ringkasan anggaran, serapan, dan proyeksi RKAP dalam satu tampilan.</p></div>
   <div class="filter-card compact">
-    <select [(ngModel)]="companyId" (change)="companyChanged()"><option [ngValue]="null">Semua perusahaan</option><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select>
+    <select [(ngModel)]="companyId" (change)="companyChanged()"><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select>
     <select [(ngModel)]="divisiId" (change)="load()"><option [ngValue]="null">Semua divisi</option><option *ngFor="let d of filteredDivisi" [ngValue]="d.id">{{d.nama}}</option></select>
     <select [(ngModel)]="tahun" (change)="load()"><option *ngFor="let y of years" [ngValue]="y">{{y}}</option></select>
   </div>
@@ -96,7 +99,7 @@ export class DashboardPage implements OnInit {
   companies:Company[]=[]; divisi:Divisi[]=[]; overview?:GroupOverview; capex?:CapexOpex; monitoring?:MonitoringRka;
   companyId:number|null=null; divisiId:number|null=null; tahun=new Date().getFullYear(); years=yearOptions(); loading=false; error='';
   constructor(private api:ApiService){}
-  ngOnInit(){ forkJoin([this.api.companies(),this.api.divisiAnggaran()]).subscribe({next:([c,d])=>{this.companies=c;this.divisi=d;this.load();},error:e=>this.error=errMsg(e,'Tidak dapat mengambil master data. Pastikan backend Spring Boot aktif di port 8080.')}); }
+  ngOnInit(){ forkJoin([this.api.companies(),this.api.divisiAnggaran()]).subscribe({next:([c,d])=>{this.companies=onlySarinah(c);this.companyId=this.companies[0]?.id??null;this.divisi=d;this.load();},error:e=>this.error=errMsg(e,'Tidak dapat mengambil master data. Pastikan backend Spring Boot aktif di port 8080.')}); }
   get filteredDivisi(){ return this.companyId ? this.divisi.filter(d=>d.companyId===this.companyId) : this.divisi; }
   companyChanged(){ this.divisiId=null; this.load(); }
   load(){ this.loading=true;this.error=''; const f={companyId:this.companyId,divisiId:this.divisiId,tahun:this.tahun}; forkJoin([this.api.groupOverview(f),this.api.capexOpex(f),this.api.monitoring(f)]).subscribe({next:([o,c,m])=>{this.overview=o;this.capex=c;this.monitoring=m;this.loading=false;},error:e=>{this.loading=false;this.error=errMsg(e,'Dashboard gagal dimuat. Pastikan API backend berjalan.');}}); }
