@@ -39,6 +39,13 @@ public class MataAnggaranService {
                 list -> list.stream().map(MataAnggaranService::toResponse).toList(), null);
     }
 
+    /** Seluruh baris yang cocok dengan filter tabel master (untuk export), urut sesuai sort tabel. */
+    @Transactional(readOnly = true)
+    public List<MataAnggaranDto.Response> search(TipeAnggaran tipe, Boolean aktif, String q, String sort) {
+        Pageable all = Pageable.unpaged(Paging.sort(sort, SORT, Sort.by("m.noCoa", "m.id")));
+        return repository.page(tipe, aktif, Paging.like(q), all).map(MataAnggaranService::toResponse).getContent();
+    }
+
     @Transactional(readOnly = true)
     public MataAnggaran get(Long id) {
         return repository.findById(id).orElseThrow(() -> new NotFoundException("Mata anggaran", id));
@@ -62,6 +69,26 @@ public class MataAnggaranService {
                 });
         apply(m, req);
         return toResponse(m);
+    }
+
+    /**
+     * Simpan berdasarkan No COA: perbarui bila sudah ada, buat baru bila belum.
+     * aktif null pada data lama mempertahankan status yang ada.
+     *
+     * @return true bila baris baru dibuat
+     */
+    public boolean upsert(MataAnggaranDto.Request req) {
+        MataAnggaran m = repository.findByNoCoa(req.noCoa()).orElse(null);
+        if (m == null) {
+            m = new MataAnggaran();
+            apply(m, req);
+            repository.save(m);
+            return true;
+        }
+        boolean aktif = req.aktif() == null ? m.isAktif() : req.aktif();
+        apply(m, req);
+        m.setAktif(aktif);
+        return false;
     }
 
     private static void apply(MataAnggaran m, MataAnggaranDto.Request req) {

@@ -3,14 +3,14 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subject, Subscription, debounceTime, forkJoin } from 'rxjs';
 import { ApiService } from '../../core/api.service';
-import { errMsg } from '../../core/format';
+import { downloadBlob, errMsg } from '../../core/format';
 import { PagerComponent } from '../../core/pager.component';
 import { Company, Divisi, LevelOrganisasi, MataAnggaran, TipeAnggaran } from '../../core/models';
 
 @Component({selector:'app-master',standalone:true,imports:[CommonModule,FormsModule,PagerComponent],template:`
-<div class="page-head"><div><div class="eyebrow">CONFIGURATION</div><h1>Master Data</h1><p>Kelola perusahaan, divisi, dan chart of accounts yang dipakai pada RKA.</p></div><button class="btn primary" (click)="openAdd()">＋ Tambah {{tabLabel}}</button></div>
+<div class="page-head"><div><div class="eyebrow">CONFIGURATION</div><h1>Master Data</h1><p>Kelola perusahaan, divisi, dan chart of accounts yang dipakai pada RKA.</p></div><div class="head-actions"><ng-container *ngIf="tab==='coa'"><button class="btn secondary" (click)="downloadTemplateCoa()">↓ Template Excel</button><button class="btn secondary" (click)="exportCoa()">⇩ Export</button><input #coaFile type="file" accept=".xlsx" hidden (change)="importCoa($event)"><button class="btn secondary" [disabled]="importing" (click)="coaFile.click()">{{importing?'Mengimpor…':'↑ Import Excel'}}</button></ng-container><button class="btn primary" (click)="openAdd()">＋ Tambah {{tabLabel}}</button></div></div>
 <div class="segmented"><button [class.active]="tab==='company'" (click)="setTab('company')">Perusahaan <span>{{companies.length}}</span></button><button [class.active]="tab==='divisi'" (click)="setTab('divisi')">Divisi <span>{{divisi.length}}</span></button><button [class.active]="tab==='coa'" (click)="setTab('coa')">Mata Anggaran <span>{{coaCount}}</span></button></div>
-<div *ngIf="error" class="alert danger">{{error}}</div><div *ngIf="message" class="alert success">{{message}}</div>
+<div *ngIf="error" class="alert danger">{{error}}<ul *ngIf="importErrors.length" class="error-list"><li *ngFor="let e of importErrors">{{e}}</li></ul></div><div *ngIf="message" class="alert success">{{message}}</div>
 
 <article class="panel table-panel" *ngIf="tab==='company'"><div class="panel-head"><div><h3>Perusahaan / Entitas</h3><p>Daftar entitas di dalam group</p></div></div><div class="table-scroll"><table><thead><tr><th>Kode</th><th>Nama</th><th>Group</th><th>Divisi</th><th></th></tr></thead><tbody><tr *ngFor="let x of companies"><td><b>{{x.kode}}</b></td><td>{{x.nama}}</td><td>{{x.namaGrup || '-'}}</td><td>{{countDivisi(x.id)}}</td><td><button class="table-action" (click)="editCompany(x)">Edit</button></td></tr><tr *ngIf="!companies.length"><td colspan="5"><div class="empty">Belum ada perusahaan.</div></td></tr></tbody></table></div></article>
 
@@ -58,7 +58,7 @@ export class MasterPage implements OnInit, OnDestroy {
   /** Isi tabel divisi / COA per halaman dari server; divisi penuh tetap dipakai untuk pilihan induk dan jumlah per perusahaan. */
   divisiRows:Divisi[]=[];coaRows:MataAnggaran[]=[];coaCount=0;page=0;size=20;total=0;loading=false;
   readonly search$=new Subject<void>();private subs=new Subscription();private tableSub?:Subscription;
-  modal=false;saving=false;editing:any;form:any={};message='';error='';formError='';
+  modal=false;saving=false;importing=false;editing:any;form:any={};message='';error='';formError='';importErrors:string[]=[];
   levels:LevelOrganisasi[]=['HEAD_OFFICE','DIREKTORAT','DIVISI','UNIT'];
   fCompany:number|null=null;fLevel:LevelOrganisasi|null=null;fAktif:boolean|null=null;fTipe:TipeAnggaran|null=null;q='';
   constructor(private api:ApiService){}
@@ -83,7 +83,20 @@ export class MasterPage implements OnInit, OnDestroy {
   goPage(p:number){this.page=p;this.loadTable();}
   setSize(s:number){this.size=s;this.page=0;this.loadTable();}
   get tabLabel(){return this.tab==='company'?'Perusahaan':this.tab==='divisi'?'Divisi':'Mata Anggaran';}
-  setTab(t:'company'|'divisi'|'coa'){this.tab=t;this.q='';this.fAktif=null;this.page=0;this.total=0;this.loadTable();}
+  setTab(t:'company'|'divisi'|'coa'){this.tab=t;this.error='';this.message='';this.importErrors=[];this.q='';this.fAktif=null;this.page=0;this.total=0;this.loadTable();}
+  downloadTemplateCoa(){this.api.templateCoa().subscribe({next:b=>downloadBlob(b,'template-mata-anggaran.xlsx'),error:e=>this.error=errMsg(e,'Template gagal diunduh.')});}
+  /** Export mengikuti filter dan kata kunci tabel yang sedang tampil. */
+  exportCoa(){this.api.exportCoa({tipe:this.fTipe,aktif:this.fAktif,q:this.q}).subscribe({next:b=>downloadBlob(b,'mata-anggaran.xlsx'),error:e=>this.error=errMsg(e,'Export gagal.')});}
+  importCoa(ev:Event){
+    const input=ev.target as HTMLInputElement; const f=input.files?.[0]; if(!f)return;
+    this.error='';this.message='';this.importErrors=[];this.importing=true;
+    this.api.importCoa(f).subscribe({
+      next:r=>{this.importing=false;input.value='';this.message=`Import selesai: ${r.totalBaris} baris, ${r.dibuat} dibuat, ${r.diperbarui} diperbarui.`;this.reload();},
+      error:e=>{this.importing=false;input.value='';
+        if(e?.status===422&&e.error?.errors){this.error=`Import dibatalkan, ditemukan ${e.error.errors.length} kesalahan (tidak ada data yang disimpan):`;this.importErrors=e.error.errors;}
+        else this.error=errMsg(e,'Import Excel gagal.');}
+    });
+  }
   levelLabel(l:string){return ({HEAD_OFFICE:'Head Office',DIREKTORAT:'Direktorat',DIVISI:'Divisi',UNIT:'Unit'} as Record<string,string>)[l]||l;}
   countDivisi(companyId:number){return this.divisi.filter(d=>d.companyId===companyId&&d.level==='DIVISI').length;}
   /** Induk harus satu perusahaan dan bukan dirinya sendiri. */

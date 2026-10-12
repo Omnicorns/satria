@@ -34,6 +34,10 @@ export class ApiService {
   coaPage(filter:{tipe?:TipeAnggaran|null; aktif?:boolean|null}&PageQuery):Observable<Page<MataAnggaran>> { return this.http.get<Page<MataAnggaran>>(`${this.base}/mata-anggaran`, {params:this.params(filter)}); }
   createCoa(body:any){ return this.http.post<MataAnggaran>(`${this.base}/mata-anggaran`, body); }
   updateCoa(id:number,body:any){ return this.http.put<MataAnggaran>(`${this.base}/mata-anggaran/${id}`, body); }
+  templateCoa(){ return this.http.get(`${this.base}/mata-anggaran/excel/template`, {responseType:'blob'}); }
+  /** Filter sama dengan tabel master; tanpa page/size = semua baris yang cocok. */
+  exportCoa(filter:{tipe?:TipeAnggaran|null; aktif?:boolean|null; q?:string; sort?:string}={}){ return this.http.get(`${this.base}/mata-anggaran/excel/export`, {params:this.params(filter), responseType:'blob'}); }
+  importCoa(file:File){ const fd=new FormData(); fd.append('file',file); return this.http.post<ImportResult>(`${this.base}/mata-anggaran/excel/import`,fd); }
 
   rka(filters:Filters={}):Observable<ProgramKerja[]> { return this.http.get<ProgramKerja[]>(`${this.base}/rka`, {params:this.params(filters)}); }
   rkaPage(filters:Filters&PageQuery):Observable<Page<ProgramKerja,RkaSummary>> { return this.http.get<Page<ProgramKerja,RkaSummary>>(`${this.base}/rka`, {params:this.params(filters)}); }

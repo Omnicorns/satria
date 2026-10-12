@@ -25,7 +25,8 @@ public final class Paging {
         return PageRequest.of(p, s, sort(sort, columns, fallback));
     }
 
-    private static Sort sort(String sort, Map<String, String> columns, Sort fallback) {
+    /** Sort yang sama dengan {@link #of} tanpa pembagian halaman (dipakai export). */
+    public static Sort sort(String sort, Map<String, String> columns, Sort fallback) {
         if (sort == null || sort.isBlank()) {
             return fallback;
         }

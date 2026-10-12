@@ -245,6 +245,64 @@ class RealisasiApiIntegrationTest {
     }
 
     @Test
+    void mataAnggaranExcelTemplateImportExport() throws Exception {
+        byte[] template = mvc.perform(get("/api/mata-anggaran/excel/template"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("template-mata-anggaran.xlsx")))
+                .andReturn().getResponse().getContentAsByteArray();
+        try (Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(template))) {
+            assertThat(wb.getSheetAt(0).getRow(0).getCell(0).getStringCellValue()).isEqualTo("No COA");
+            assertThat(wb.getSheet("Petunjuk")).isNotNull();
+        }
+
+        // Baris tidak valid atau No COA dobel -> 422 dan tidak ada yang tersimpan.
+        byte[] invalid = workbook(new Object[][]{
+                {"12ab", "", "XYZ", null, "mungkin"},
+                {"6104050001", "Beban Sewa Baru", "OPEX"},
+                {"6104050001", "Beban Sewa Lagi", "OPEX"}});
+        mvc.perform(multipart("/api/mata-anggaran/excel/import").file(file(invalid)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.dibuat").value(0))
+                .andExpect(jsonPath("$.errors.length()").value(5))
+                .andExpect(jsonPath("$.errors[0]").value("Baris 2: Tipe harus OPEX atau CAPEX, bukan 'XYZ'"))
+                .andExpect(jsonPath("$.errors[4]").value("Baris 4: No COA 6104050001 duplikat dengan baris 3"));
+        mvc.perform(get("/api/mata-anggaran/{id}", coaOpexId))
+                .andExpect(jsonPath("$.nama").value("Beban Sewa Mesin dan Peralatan"));
+
+        // Upsert per No COA: yang ada diperbarui, yang baru dibuat; No COA numerik pun diterima.
+        byte[] valid = workbook(new Object[][]{
+                {"6104050001", "Beban Sewa Mesin", "opex", "Beban Sewa", "Nonaktif"},
+                {5101010001L, "Beban Gaji", "OPEX", "Beban Pegawai", null}});
+        mvc.perform(multipart("/api/mata-anggaran/excel/import").file(file(valid)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dibuat").value(1))
+                .andExpect(jsonPath("$.diperbarui").value(1));
+        mvc.perform(get("/api/mata-anggaran/{id}", coaOpexId))
+                .andExpect(jsonPath("$.nama").value("Beban Sewa Mesin"))
+                .andExpect(jsonPath("$.kategori").value("Beban Sewa"))
+                .andExpect(jsonPath("$.aktif").value(false));
+        mvc.perform(get("/api/mata-anggaran")).andExpect(jsonPath("$.length()").value(3));
+
+        // Export mengikuti filter tabel dan bisa diimpor ulang tanpa perubahan.
+        byte[] export = mvc.perform(get("/api/mata-anggaran/excel/export").param("tipe", "OPEX"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsByteArray();
+        try (Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(export))) {
+            Sheet s = wb.getSheetAt(0);
+            assertThat(s.getLastRowNum()).isEqualTo(2);
+            assertThat(s.getRow(1).getCell(0).getStringCellValue()).isEqualTo("5101010001");
+            assertThat(s.getRow(2).getCell(4).getStringCellValue()).isEqualTo("Nonaktif");
+        }
+        mvc.perform(multipart("/api/mata-anggaran/excel/import").file(file(export)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dibuat").value(0))
+                .andExpect(jsonPath("$.diperbarui").value(2));
+        mvc.perform(get("/api/mata-anggaran/excel/export").param("aktif", "false").param("q", "sewa"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void anggaranPerDivisiDijumlahkanKePerusahaan() throws Exception {
         long finance = id(postJson("/api/divisi",
                 Map.of("companyId", companyId, "kode", "INJ-FIN", "nama", "Finance")));
