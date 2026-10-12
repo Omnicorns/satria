@@ -14,7 +14,7 @@ function onlySarinah(c:Company[]){ const s=c.filter(x=>/sarinah/i.test(x.nama));
   <div><div class="eyebrow">GROUP OVERVIEW</div><h1>Executive Budget Dashboard</h1><p>Ringkasan anggaran, serapan, dan proyeksi RKAP dalam satu tampilan.</p></div>
   <div class="filter-card compact">
     <select [(ngModel)]="companyId" (change)="companyChanged()"><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select>
-    <select [(ngModel)]="divisiId" (change)="load()"><option [ngValue]="null">Semua divisi</option><option *ngFor="let d of filteredDivisi" [ngValue]="d.id">{{d.nama}}</option></select>
+    <select [(ngModel)]="divisiId" (change)="load()"><option [ngValue]="null">Semua divisi group</option><option *ngFor="let d of filteredDivisi" [ngValue]="d.id">{{d.nama}}</option></select>
     <select [(ngModel)]="tahun" (change)="load()"><option *ngFor="let y of years" [ngValue]="y">{{y}}</option></select>
   </div>
 </div>
@@ -31,7 +31,7 @@ function onlySarinah(c:Company[]){ const s=c.filter(x=>/sarinah/i.test(x.nama));
 
   <section class="dashboard-grid two-one">
     <article class="panel">
-      <div class="panel-head"><div><h3>Serapan per Divisi</h3><p>Anggaran vs realisasi tahun {{o.tahun}}</p></div><span class="pill">Top 8</span></div>
+      <div class="panel-head"><div><h3>Serapan per Divisi Group</h3><p>Anggaran vs realisasi tahun {{o.tahun}}</p></div><span class="pill">Top 8</span></div>
       <div class="bar-list" *ngIf="o.perDivisi.length; else emptyDivisi">
         <div class="bar-row" *ngFor="let row of o.perDivisi.slice(0,8)">
           <div class="bar-label"><b>{{row.nama}}</b><span>{{row.persenTotal | number:'1.1-1'}}%</span></div>
