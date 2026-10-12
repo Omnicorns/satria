@@ -6,6 +6,8 @@ import { Observable, tap } from 'rxjs';
 export interface SessionUser {
   id:number; username:string; nama:string|null; email:string|null; departemen:string|null; jabatan:string|null;
   sumber:'LDAP'|'DEV'; aktif:boolean; lastLoginAt:string|null;
+  /** admin = bebas memilih divisi; selain itu program kerja dikunci ke divisiId (pemetaan departemen AD). */
+  admin?:boolean; divisiId?:number|null; divisiNama?:string|null; companyId?:number|null; companyNama?:string|null;
 }
 export interface LoginResponse { token:string; tokenType:string; expiresAt:string; user:SessionUser; }
 interface StoredSession { token:string; expiresAt:string; user:SessionUser; }
@@ -30,6 +32,16 @@ export class AuthService {
       this.clearStorage();
       try{ (ingat?localStorage:sessionStorage).setItem(this.key,JSON.stringify(s)); }catch{ /* storage diblokir: sesi hanya di memori */ }
       this.session.set(s); this.user.set(res.user);
+    }));
+  }
+
+  /** Ambil ulang profil (divisi/admin bisa berubah setelah login, misal departemen baru dipetakan). */
+  refresh():Observable<SessionUser> {
+    return this.http.get<SessionUser>('api/auth/me').pipe(tap(user=>{
+      const s=this.session(); if(!s) return;
+      const next={...s,user};
+      try{ (localStorage.getItem(this.key)?localStorage:sessionStorage).setItem(this.key,JSON.stringify(next)); }catch{ /* abaikan */ }
+      this.session.set(next); this.user.set(user);
     }));
   }
 

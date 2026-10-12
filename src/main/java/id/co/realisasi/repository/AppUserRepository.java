@@ -13,6 +13,10 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     List<AppUser> findAllByOrderByUsernameAsc();
 
-    @EntityGraph(attributePaths = "ldapDepartemen")
+    /** User beserta departemen AD dan divisi anggaran hasil pemetaannya. */
+    @EntityGraph(attributePaths = {"ldapDepartemen", "ldapDepartemen.divisi", "ldapDepartemen.divisi.company"})
+    Optional<AppUser> findWithDivisiById(Long id);
+
+    @EntityGraph(attributePaths = {"ldapDepartemen", "ldapDepartemen.divisi"})
     List<AppUser> findAllWithDepartemenByOrderByUsernameAsc();
 }

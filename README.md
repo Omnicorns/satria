@@ -87,6 +87,15 @@ struktur anggaran. Kolom `ldap_departemen.divisi_id` (opsional) memetakan depart
 | GET | `/api/ldap/departemen` | Departemen + daftar username di dalamnya; grup terakhir `(Tanpa departemen)` |
 | PUT | `/api/ldap/departemen/{id}/divisi` | `{"divisiId": 3}` memetakan ke divisi anggaran (`null` = lepas) |
 
+### Divisi user di Program Kerja
+
+Divisi user = divisi hasil pemetaan departemen AD-nya (tabel di atas). Di Monitoring RKA user biasa tidak memilih
+divisi: form "Tambah Program Kerja" terisi dan terkunci ke divisinya, daftar/KPI/export hanya divisinya, dan
+backend menolak (403) program kerja divisi lain, termasuk baris import Excel divisi lain. User yang departemennya
+belum dipetakan ditolak dengan pesan untuk menghubungi admin. Username di `SATRIA_ADMIN_USERS` (dipisah koma,
+contoh `agung.pribadi,budi.santoso`) tetap bebas memilih divisi mana pun. `/api/auth/me` mengembalikan
+`admin`, `divisiId`, `divisiNama`.
+
 Sync otomatis: isi `LDAP_SYNC_CRON` (cron Spring, contoh `0 0 2 * * *` = tiap hari jam 02.00); default mati.
 Di frontend: menu **Pengaturan → Pengguna AD**.
 
@@ -103,6 +112,7 @@ Variabel lingkungan:
 | `LDAP_ENABLED` | `true` (prod), `false` di profil dev/test |
 | `LDAP_SYNC_CRON` | `-` (sync otomatis mati) |
 | `AUTH_REQUIRED` | `true` (prod), `false` di profil dev/test |
+| `SATRIA_ADMIN_USERS` | kosong (prod), `admin` di profil dev. Username yang bebas memilih divisi di Program Kerja |
 
 Profil dev/test tidak memakai AD: username apa pun bisa login dengan password `dev`.
 Untuk mencoba AD dari dev: `LDAP_ENABLED=true AUTH_REQUIRED=true mvn spring-boot:run -Dspring-boot.run.profiles=dev`.

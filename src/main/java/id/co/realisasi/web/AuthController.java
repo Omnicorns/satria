@@ -38,7 +38,7 @@ public class AuthController {
         if (user == null) {
             throw new AuthException("Silakan login terlebih dahulu");
         }
-        return AuthService.toResponse(user);
+        return service.me(user);
     }
 
     @PostMapping("/auth/logout")

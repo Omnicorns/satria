@@ -18,3 +18,5 @@ ldap:
 app:
   auth:
     required: ${AUTH_REQUIRED:false}
+    # Login dev "admin" (password dev) bebas memilih divisi.
+    admin-users: ${SATRIA_ADMIN_USERS:admin}

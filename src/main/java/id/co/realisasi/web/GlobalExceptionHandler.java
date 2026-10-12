@@ -2,6 +2,7 @@ package id.co.realisasi.web;
 
 import id.co.realisasi.auth.AuthException;
 import id.co.realisasi.auth.DirectoryUnavailableException;
+import id.co.realisasi.auth.ForbiddenException;
 import id.co.realisasi.service.BusinessException;
 import id.co.realisasi.service.NotFoundException;
 import id.co.realisasi.web.dto.ErrorResponse;
@@ -30,6 +31,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthException.class)
     ResponseEntity<ErrorResponse> unauthorized(AuthException e) {
         return build(HttpStatus.UNAUTHORIZED, e.getMessage(), List.of());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    ResponseEntity<ErrorResponse> forbidden(ForbiddenException e) {
+        return build(HttpStatus.FORBIDDEN, e.getMessage(), List.of());
     }
 
     @ExceptionHandler(DirectoryUnavailableException.class)
