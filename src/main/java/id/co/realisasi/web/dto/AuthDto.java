@@ -24,7 +24,13 @@ public final class AuthDto {
     public record LoginResponse(String token, String tokenType, LocalDateTime expiresAt, UserResponse user) {
     }
 
+    /**
+     * @param admin     boleh mengelola program kerja semua divisi ({@code app.auth.admin-users})
+     * @param divisiId  divisi anggaran user, dari pemetaan departemen AD ke divisi (null bila belum dipetakan)
+     */
     public record UserResponse(Long id, String username, String nama, String email, String departemen,
-                               String jabatan, SumberUser sumber, boolean aktif, LocalDateTime lastLoginAt) {
+                               String jabatan, SumberUser sumber, boolean aktif, LocalDateTime lastLoginAt,
+                               boolean admin, Long divisiId, String divisiNama, Long companyId,
+                               String companyNama) {
     }
 }

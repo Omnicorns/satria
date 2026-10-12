@@ -24,6 +24,9 @@ app:
     # true = semua /api/** (kecuali /api/auth/login) wajib header Authorization: Bearer <token>
     required: ${AUTH_REQUIRED:true}
     session-hours: ${AUTH_SESSION_HOURS:12}
+    # Username AD (dipisah koma) yang boleh memilih divisi mana pun di Program Kerja. User lain otomatis
+    # dikunci ke divisi hasil pemetaan departemen AD-nya (menu Pengguna).
+    admin-users: ${SATRIA_ADMIN_USERS:}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 

@@ -129,9 +129,12 @@ public class RkaExcelService {
         }
     }
 
-    /** Import seluruh baris; bila ada satu baris tidak valid, tidak ada yang disimpan. */
+    /**
+     * Import seluruh baris; bila ada satu baris tidak valid, tidak ada yang disimpan.
+     * {@code divisiTerkunci} (user non-admin): baris divisi lain ditolak.
+     */
     @Transactional
-    public ImportResult importExcel(InputStream in) {
+    public ImportResult importExcel(InputStream in, Long divisiTerkunci) {
         List<ParsedRow> rows = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         try (Workbook wb = WorkbookFactory.create(in)) {
@@ -142,7 +145,7 @@ public class RkaExcelService {
                 if (row == null || isBlank(row, HEADER_IMPORT.length, fmt)) {
                     continue;
                 }
-                parse(row, fmt, i + 1, errors).ifPresent(rows::add);
+                parse(row, fmt, i + 1, divisiTerkunci, errors).ifPresent(rows::add);
             }
         } catch (IOException | RuntimeException e) {
             if (e instanceof BusinessException be) {
@@ -167,7 +170,8 @@ public class RkaExcelService {
         return new ImportResult(rows.size(), dibuat, diperbarui, List.of());
     }
 
-    private Optional<ParsedRow> parse(Row row, DataFormatter fmt, int nomor, List<String> errors) {
+    private Optional<ParsedRow> parse(Row row, DataFormatter fmt, int nomor, Long divisiTerkunci,
+                                      List<String> errors) {
         int awal = errors.size();
         String kode = text(row, 0, fmt);
         String tahunStr = text(row, 1, fmt);
@@ -180,6 +184,8 @@ public class RkaExcelService {
             divisi = divisiRepository.findByKode(kode).orElse(null);
             if (divisi == null) {
                 errors.add("Baris " + nomor + ": Kode Divisi " + kode + " tidak ditemukan");
+            } else if (divisiTerkunci != null && !divisiTerkunci.equals(divisi.getId())) {
+                errors.add("Baris " + nomor + ": Kode Divisi " + kode + " bukan divisi Anda");
             }
         }
         Integer tahun = null;

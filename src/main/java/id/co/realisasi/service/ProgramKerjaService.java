@@ -1,5 +1,6 @@
 package id.co.realisasi.service;
 
+import id.co.realisasi.auth.ForbiddenException;
 import id.co.realisasi.domain.Divisi;
 import id.co.realisasi.domain.MataAnggaran;
 import id.co.realisasi.domain.ProgramKerja;
@@ -87,22 +88,25 @@ public class ProgramKerjaService {
         return toResponse(p, realisasiPerProgram(List.of(p)).get(id));
     }
 
-    public ProgramKerjaDto.Response create(ProgramKerjaDto.Request req) {
+    /** @param divisiTerkunci divisi user non-admin (null = bebas); menggantikan divisi di request. */
+    public ProgramKerjaDto.Response create(ProgramKerjaDto.Request req, Long divisiTerkunci) {
         ProgramKerja p = new ProgramKerja();
-        apply(p, req);
+        apply(p, req, divisiTerkunci);
         ensureUnique(p);
         return toResponse(repository.save(p), BigDecimal.ZERO);
     }
 
-    public ProgramKerjaDto.Response update(Long id, ProgramKerjaDto.Request req) {
+    public ProgramKerjaDto.Response update(Long id, ProgramKerjaDto.Request req, Long divisiTerkunci) {
         ProgramKerja p = get(id);
-        apply(p, req);
+        checkDivisi(p, divisiTerkunci);
+        apply(p, req, divisiTerkunci);
         ensureUnique(p);
         return toResponse(p, realisasiPerProgram(List.of(p)).get(id));
     }
 
-    public void delete(Long id) {
+    public void delete(Long id, Long divisiTerkunci) {
         ProgramKerja p = get(id);
+        checkDivisi(p, divisiTerkunci);
         if (pekerjaanRepository.existsByProgramKerjaId(id)) {
             throw new BusinessException("Program kerja masih memiliki pekerjaan, hapus pekerjaannya terlebih dahulu");
         }
@@ -125,13 +129,21 @@ public class ProgramKerjaService {
         return existing.isEmpty();
     }
 
-    private void apply(ProgramKerja p, ProgramKerjaDto.Request req) {
+    /** User non-admin hanya boleh membuka/mengubah program kerja divisinya sendiri. */
+    public static void checkDivisi(ProgramKerja p, Long divisiTerkunci) {
+        if (divisiTerkunci != null && !divisiTerkunci.equals(p.getDivisi().getId())) {
+            throw new ForbiddenException("Program kerja ini milik divisi " + p.getDivisi().getNama()
+                    + ", bukan divisi Anda");
+        }
+    }
+
+    private void apply(ProgramKerja p, ProgramKerjaDto.Request req, Long divisiTerkunci) {
         MataAnggaran mata = mataAnggaranService.get(req.mataAnggaranId());
         if (req.tipe() != null && req.tipe() != mata.getTipe()) {
             throw new BusinessException("Tipe " + req.tipe() + " tidak sesuai dengan mata anggaran "
                     + mata.getNoCoa() + " (" + mata.getTipe() + ")");
         }
-        p.setDivisi(divisiService.get(req.divisiId()));
+        p.setDivisi(divisiService.get(divisiTerkunci != null ? divisiTerkunci : req.divisiId()));
         p.setMataAnggaran(mata);
         p.setTahun(req.tahun());
         p.setTipe(mata.getTipe());
