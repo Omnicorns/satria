@@ -14,7 +14,6 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -23,7 +22,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -31,6 +29,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import static id.co.realisasi.excel.ExcelSupport.autosize;
+import static id.co.realisasi.excel.ExcelSupport.header;
+import static id.co.realisasi.excel.ExcelSupport.isBlank;
+import static id.co.realisasi.excel.ExcelSupport.text;
+import static id.co.realisasi.excel.ExcelSupport.write;
 
 /**
  * Template, export dan import Excel untuk Monitoring RKA.
@@ -135,7 +139,7 @@ public class RkaExcelService {
             DataFormatter fmt = new DataFormatter();
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
-                if (row == null || isBlank(row, fmt)) {
+                if (row == null || isBlank(row, HEADER_IMPORT.length, fmt)) {
                     continue;
                 }
                 parse(row, fmt, i + 1, errors).ifPresent(rows::add);
@@ -235,52 +239,12 @@ public class RkaExcelService {
         }
     }
 
-    private static String text(Row row, int col, DataFormatter fmt) {
-        Cell cell = row.getCell(col);
-        return cell == null ? "" : fmt.formatCellValue(cell).trim();
-    }
-
-    private static boolean isBlank(Row row, DataFormatter fmt) {
-        for (int c = 0; c < HEADER_IMPORT.length; c++) {
-            if (!text(row, c, fmt).isEmpty()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static void header(Workbook wb, Sheet sheet, String[] cols) {
-        CellStyle style = wb.createCellStyle();
-        Font bold = wb.createFont();
-        bold.setBold(true);
-        style.setFont(bold);
-        Row h = sheet.createRow(0);
-        for (int i = 0; i < cols.length; i++) {
-            Cell c = h.createCell(i);
-            c.setCellValue(cols[i]);
-            c.setCellStyle(style);
-        }
-        sheet.createFreezePane(0, 1);
-    }
-
     private static void money(Row row, int col, BigDecimal v, CellStyle style) {
         Cell c = row.createCell(col);
         if (v != null) {
             c.setCellValue(v.doubleValue());
             c.setCellStyle(style);
         }
-    }
-
-    private static void autosize(Sheet sheet, int cols) {
-        for (int i = 0; i < cols; i++) {
-            sheet.setColumnWidth(i, 22 * 256);
-        }
-    }
-
-    private static byte[] write(Workbook wb) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        wb.write(out);
-        return out.toByteArray();
     }
 
     private record ParsedRow(Divisi divisi, MataAnggaran mata, Integer tahun, BigDecimal planning,
