@@ -169,6 +169,15 @@ class RealisasiApiIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("RKA 2028")));
 
+        // Filter program RKA 2027 ikut menampilkan pekerjaan multi year yang membebaninya.
+        mvc.perform(get("/api/pekerjaan").param("programKerjaId", String.valueOf(rka2027)))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].nama").value("E-Commerce"));
+        mvc.perform(get("/api/pekerjaan").param("programKerjaId", String.valueOf(rka2027)).param("page", "0"))
+                .andExpect(jsonPath("$.total").value(1));
+        mvc.perform(get("/api/dashboard/capex-opex").param("programKerjaId", String.valueOf(rka2027)))
+                .andExpect(jsonPath("$.progressPekerjaan.length()").value(1));
+
         mvc.perform(get("/api/dashboard/monitoring-rka").param("tahun", "2027"))
                 .andExpect(jsonPath("$.totalRealisasi").value(600))
                 .andExpect(jsonPath("$.carryOver.length()").value(1))
