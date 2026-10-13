@@ -42,7 +42,7 @@ import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, RkaSummary,
         <div class="gb-label"><b>{{it.nama}}</b><small>{{it.noCoa}} · {{it.divisiNama}}</small></div>
         <div class="gb-bars">
           <i class="planning" [style.width.%]="scale(it.planning,m)" [title]="'Planning '+money(it.planning)"></i>
-          <i class="pagu" [style.width.%]="scale(it.pagu,m)" [title]="'Pagu '+money(it.pagu)"></i>
+          <i class="pagu" [style.width.%]="scale(it.pagu ?? it.planning,m)" [title]="'Pagu '+money(it.pagu ?? it.planning)+(it.pagu==null?' (ikut planning)':'')"></i>
           <i class="real" [style.width.%]="scale(it.realisasi,m)" [title]="'Realisasi '+money(it.realisasi)"></i>
         </div>
         <span class="gb-pct">{{it.capaianPersen | number:'1.0-1'}}%</span>
@@ -68,7 +68,7 @@ import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, RkaSummary,
 <article class="panel table-panel">
   <div class="panel-head"><div><h3>Daftar Program Kerja</h3><p>{{total}} data ditemukan</p></div></div>
   <div class="table-scroll"><table><thead><tr><th>COA / Mata Anggaran</th><th>Divisi</th><th>Tahun</th><th>Tipe</th><th>Planning</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Capaian</th><th>Status</th><th></th></tr></thead><tbody>
-    <tr *ngFor="let r of rows"><td><b>{{r.namaMataAnggaran}}</b><small class="cell-sub">{{r.noCoa}}</small></td><td>{{r.divisiNama}}<small class="cell-sub">{{r.companyNama}}</small></td><td>{{r.tahun}}</td><td><span class="badge" [class.capex]="r.tipe==='CAPEX'">{{r.tipe}}</span></td><td>{{money(r.planningBudget)}}</td><td>{{r.pagu==null?'-':money(r.pagu)}}</td><td>{{money(r.realisasi)}}</td><td [class.neg]="r.sisa<0">{{money(r.sisa)}}</td><td><div class="progress-cell"><span>{{r.capaianPersen | number:'1.1-1'}}%</span><div class="bar-bg"><i [style.width.%]="clamp(r.capaianPersen)"></i></div></div></td><td><span class="badge" [class.success]="r.status==='OPEN'">{{r.status}}</span></td>
+    <tr *ngFor="let r of rows"><td><b>{{r.namaMataAnggaran}}</b><small class="cell-sub">{{r.noCoa}}</small></td><td>{{r.divisiNama}}<small class="cell-sub">{{r.companyNama}}</small></td><td>{{r.tahun}}</td><td><span class="badge" [class.capex]="r.tipe==='CAPEX'">{{r.tipe}}</span></td><td>{{money(r.planningBudget)}}</td><td><ng-container *ngIf="r.pagu!=null; else ikutPlanning">{{money(r.pagu)}}</ng-container><ng-template #ikutPlanning>{{money(r.planningBudget)}}<small class="cell-sub">ikut planning</small></ng-template></td><td>{{money(r.realisasi)}}</td><td [class.neg]="r.sisa<0">{{money(r.sisa)}}</td><td><div class="progress-cell"><span>{{r.capaianPersen | number:'1.1-1'}}%</span><div class="bar-bg"><i [style.width.%]="clamp(r.capaianPersen)"></i></div></div></td><td><span class="badge" [class.success]="r.status==='OPEN'">{{r.status}}</span></td>
       <td class="row-actions"><a class="table-action" routerLink="/pekerjaan" [queryParams]="{programKerjaId:r.id}">Pekerjaan</a><button class="table-action" (click)="openEdit(r)">Edit</button><button class="table-action danger" (click)="remove(r)">Hapus</button></td></tr>
     <tr *ngIf="!rows.length"><td colspan="11"><div class="empty">Belum ada data RKA untuk filter ini.</div></td></tr>
   </tbody></table></div>
@@ -130,8 +130,8 @@ export class RkaPage implements OnInit, OnDestroy {
   filterCoa(){this.selectableCoa=this.coa.filter(c=>c.tipe===this.form.tipe && (c.aktif || c.id===this.form.mataAnggaranId));this.coaOptions=this.selectableCoa.map(c=>({value:c.id,label:`${c.noCoa} · ${c.nama}`}));}
   tipeChanged(){this.filterCoa();if(!this.selectableCoa.some(c=>c.id===this.form.mataAnggaranId))this.form.mataAnggaranId=null;}
 
-  topItems(m:MonitoringRka){return [...(m.perMataAnggaran||[])].sort((a,b)=>(b.pagu||0)-(a.pagu||0)).slice(0,10);}
-  scale(v:number,m:MonitoringRka){const max=Math.max(1,...this.topItems(m).map(i=>Math.max(i.planning||0,i.pagu||0,i.realisasi||0)));return clamp((v||0)/max*100);}
+  topItems(m:MonitoringRka){return [...(m.perMataAnggaran||[])].sort((a,b)=>(b.pagu ?? b.planning ?? 0)-(a.pagu ?? a.planning ?? 0)).slice(0,10);}
+  scale(v:number,m:MonitoringRka){const max=Math.max(1,...this.topItems(m).map(i=>Math.max(i.planning||0,i.pagu ?? 0,i.realisasi||0)));return clamp((v||0)/max*100);}
   distribusi(m:MonitoringRka){const d=m.distribusi||{nol:0,satuSampai49:0,limaPuluhSampai99:0,seratusPlus:0};const total=Math.max(1,d.nol+d.satuSampai49+d.limaPuluhSampai99+d.seratusPlus);
     return [{label:'0%',n:d.nol,color:'#ef4444'},{label:'1–49%',n:d.satuSampai49,color:'#f59e0b'},{label:'50–99%',n:d.limaPuluhSampai99,color:'#3b82f6'},{label:'≥100%',n:d.seratusPlus,color:'#22c55e'}].map(x=>({...x,pct:x.n/total*100}));}
 
