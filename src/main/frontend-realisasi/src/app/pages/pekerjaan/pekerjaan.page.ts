@@ -7,9 +7,10 @@ import { ApiService } from '../../core/api.service';
 import { AuthService, SessionUser } from '../../core/auth.service';
 import { clamp, errMsg, money, tgl, today, yearOptions } from '../../core/format';
 import { PagerComponent } from '../../core/pager.component';
+import { SearchOption, SearchSelectComponent } from '../../core/search-select.component';
 import { CapexOpex, Company, Divisi, Financial, Milestone, Pekerjaan, PekerjaanSummary, ProgramKerja, ProgressItem, StatusMilestone, TipeAnggaran } from '../../core/models';
 
-@Component({selector:'app-pekerjaan',standalone:true,imports:[CommonModule,FormsModule,PagerComponent],template:`
+@Component({selector:'app-pekerjaan',standalone:true,imports:[CommonModule,FormsModule,PagerComponent,SearchSelectComponent],template:`
 <div class="page-head"><div><div class="eyebrow">EXECUTION</div><h1>CAPEX / OPEX</h1><p>Pantau pekerjaan, progress, timeline, serta realisasi keuangan.</p></div><button class="btn primary" [disabled]="tanpaDivisi" (click)="openCreate()">＋ Tambah Pekerjaan</button></div>
 <div class="filter-card">
   <div><label>Perusahaan</label><select [(ngModel)]="companyId" [disabled]="terkunci" (change)="companyChanged()"><option [ngValue]="null">Semua</option><option *ngFor="let c of companies" [ngValue]="c.id">{{c.nama}}</option></select></div>
@@ -42,7 +43,7 @@ import { CapexOpex, Company, Divisi, Financial, Milestone, Pekerjaan, PekerjaanS
 </section>
 
 <article class="panel table-panel"><div class="panel-head"><div><h3>Daftar Pekerjaan</h3><p>{{total}} pekerjaan</p></div></div><div class="table-scroll"><table><thead><tr><th>Pekerjaan</th><th>PIC</th><th>Divisi</th><th>Periode</th><th>Anggaran</th><th>Realisasi</th><th>Progress</th><th>Status</th><th>Estimasi Selesai</th><th></th></tr></thead><tbody>
-<tr *ngFor="let p of rows"><td><b>{{p.nama}}</b><small class="cell-sub">{{p.noCoa}} · {{p.namaMataAnggaran}} · <span class="badge" [class.capex]="p.tipe==='CAPEX'">{{p.tipe}}</span></small></td><td>{{p.pic}}</td><td>{{p.divisiNama}}<small class="cell-sub">{{p.companyNama}}</small></td><td>{{p.tahun}}<small class="cell-sub">{{p.jenisPeriode==='MULTI_YEAR'?'Multi year':'Single year'}}</small></td><td>{{money(p.anggaran)}}</td><td>{{money(p.realisasi)}}<small class="cell-sub" [class.neg]="p.sisa<0">sisa {{money(p.sisa)}}</small></td><td><div class="progress-cell"><span>{{p.progress}}%</span><div class="bar-bg"><i [style.width.%]="clamp(p.progress)"></i></div></div></td><td><span class="badge" [class.danger]="p.status==='TERLAMBAT'" [class.success]="p.status==='SELESAI'">{{labelStatus(p.status)}}</span></td><td>{{tgl(p.estimasiSelesai)}}</td>
+<tr *ngFor="let p of rows"><td><b>{{p.nama}}</b><small class="cell-sub">{{p.noCoa}} · {{p.namaMataAnggaran}} · <span class="badge" [class.capex]="p.tipe==='CAPEX'">{{p.tipe}}</span><span class="badge" *ngIf="programFilter && p.programKerjaId!==programFilter.id" title="Pekerjaan multi year yang ditautkan ke RKA tahun lain tetapi membebani RKA ini">multi year · RKA {{programTahun(p.programKerjaId)}}</span></small></td><td>{{p.pic}}</td><td>{{p.divisiNama}}<small class="cell-sub">{{p.companyNama}}</small></td><td>{{p.tahun}}<small class="cell-sub">{{p.jenisPeriode==='MULTI_YEAR'?'Multi year':'Single year'}}</small></td><td>{{money(p.anggaran)}}</td><td>{{money(p.realisasi)}}<small class="cell-sub" [class.neg]="p.sisa<0">sisa {{money(p.sisa)}}</small></td><td><div class="progress-cell"><span>{{p.progress}}%</span><div class="bar-bg"><i [style.width.%]="clamp(p.progress)"></i></div></div></td><td><span class="badge" [class.danger]="p.status==='TERLAMBAT'" [class.success]="p.status==='SELESAI'">{{labelStatus(p.status)}}</span></td><td>{{tgl(p.estimasiSelesai)}}</td>
 <td class="row-actions"><button class="table-action" (click)="openDetail(p)">Detail</button><button class="table-action" (click)="openEdit(p)">Edit</button><button class="table-action danger" (click)="remove(p)">Hapus</button></td></tr>
 <tr *ngIf="!rows.length"><td colspan="10"><div class="empty">Belum ada pekerjaan.</div></td></tr></tbody></table></div>
 <app-pager [page]="page" [size]="size" [total]="total" (pageChange)="page=$event;loadRows()" (sizeChange)="size=$event;filterChanged()"></app-pager></article>
@@ -88,7 +89,7 @@ import { CapexOpex, Company, Divisi, Financial, Milestone, Pekerjaan, PekerjaanS
 <section class="modal" *ngIf="modal"><div class="modal-head"><div><small>{{editing?'EDIT PEKERJAAN':'PEKERJAAN BARU'}}</small><h2>{{editing?'Ubah Pekerjaan':'Tambah Pekerjaan'}}</h2></div><button class="icon-btn" (click)="modal=false">×</button></div>
   <div *ngIf="formError" class="alert danger form-alert">{{formError}}</div>
   <div class="form-grid">
-    <div class="span-2"><label>Program Kerja (RKA) *</label><select [(ngModel)]="form.programKerjaId" (change)="programChanged()"><option [ngValue]="null">Pilih program</option><option *ngFor="let r of programOptions" [ngValue]="r.id">{{r.tahun}} · {{r.divisiNama}} · {{r.noCoa}} {{r.namaMataAnggaran}}{{r.status==='CLOSED'?' (CLOSED)':''}}</option></select>
+    <div class="span-2"><label>Program Kerja (RKA) *</label><app-search-select [(ngModel)]="form.programKerjaId" (ngModelChange)="programChanged()" [options]="programSearchOptions" placeholder="Ketik tahun, divisi, no COA atau nama"></app-search-select>
       <small class="hint" *ngIf="selectedProgram as sp">{{sp.tipe}} · plafon {{money(sp.pagu ?? sp.planningBudget)}} · sisa {{money(sp.sisa)}}</small></div>
     <div class="span-2"><label>Nama Pekerjaan *</label><input [(ngModel)]="form.nama"></div>
     <div><label>PIC *</label><input [(ngModel)]="form.pic" list="pic-list"><datalist id="pic-list"><option *ngFor="let p of picOptions" [value]="p"></option></datalist></div>
@@ -142,6 +143,12 @@ export class PekerjaanPage implements OnInit, OnDestroy {
   get programFilter(){return this.programKerjaId?this.rka.find(r=>r.id===this.programKerjaId):undefined;}
   /** Program untuk form: yang OPEN, plus program milik pekerjaan yang sedang diedit. */
   get programOptions(){return this.rka.filter(r=>r.status==='OPEN'||r.id===this.form.programKerjaId);}
+  private programCache?:{rka:ProgramKerja[];id:any;options:SearchOption[]};
+  get programSearchOptions(){
+    const c=this.programCache;if(c&&c.rka===this.rka&&c.id===this.form.programKerjaId)return c.options;
+    const options=this.programOptions.map(r=>({value:r.id,label:`${r.tahun} · ${r.divisiNama} · ${r.noCoa} ${r.namaMataAnggaran}${r.status==='CLOSED'?' (CLOSED)':''}`}));
+    this.programCache={rka:this.rka,id:this.form.programKerjaId,options};return options;}
+  programTahun(id:number){return this.rka.find(r=>r.id===id)?.tahun??'lain';}
   get selectedProgram(){return this.rka.find(r=>r.id===this.form.programKerjaId);}
   get tahunTidakCocok(){const r=this.selectedProgram;return !!r&&this.form.jenisPeriode==='SINGLE_YEAR'&&this.form.tahun!==r.tahun;}
   private get filters(){return {companyId:this.companyId,divisiId:this.divisiId,tahun:this.tahun,tipe:this.tipe,pic:this.pic,programKerjaId:this.programKerjaId};}

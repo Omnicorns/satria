@@ -7,9 +7,10 @@ import { ApiService } from '../../core/api.service';
 import { AuthService, SessionUser } from '../../core/auth.service';
 import { clamp, downloadBlob, errMsg, money, yearOptions } from '../../core/format';
 import { PagerComponent } from '../../core/pager.component';
+import { SearchOption, SearchSelectComponent } from '../../core/search-select.component';
 import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, RkaSummary, TipeAnggaran } from '../../core/models';
 
-@Component({selector:'app-rka',standalone:true,imports:[CommonModule,FormsModule,RouterLink,PagerComponent],template:`
+@Component({selector:'app-rka',standalone:true,imports:[CommonModule,FormsModule,RouterLink,PagerComponent,SearchSelectComponent],template:`
 <div class="page-head">
   <div><div class="eyebrow">BUDGET & RKA</div><h1>Monitoring RKA</h1><p>Kelola program kerja, pagu, realisasi, dan capaian per mata anggaran per divisi.</p></div>
   <div class="head-actions"><button class="btn secondary" (click)="downloadTemplate()">↓ Template Excel</button><button class="btn secondary" (click)="exportExcel()">⇩ Export</button><button class="btn primary" [disabled]="tanpaDivisi" (click)="openCreate()">＋ Tambah Program</button></div>
@@ -82,7 +83,7 @@ import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, RkaSummary,
     <div class="span-2"><label>Divisi *</label><select [(ngModel)]="form.divisiId" [disabled]="terkunci"><option [ngValue]="null">Pilih divisi</option><option *ngFor="let d of divisi" [ngValue]="d.id">{{d.companyNama}} · {{d.nama}}</option></select><small *ngIf="terkunci" class="hint">Mengikuti divisi akun Anda</small></div>
     <div><label>Tahun *</label><select [(ngModel)]="form.tahun"><option *ngFor="let y of years" [ngValue]="y">{{y}}</option></select></div>
     <div><label>Tipe</label><select [(ngModel)]="form.tipe" (change)="tipeChanged()"><option value="OPEX">OPEX</option><option value="CAPEX">CAPEX</option></select></div>
-    <div class="span-2"><label>Mata Anggaran (COA) *</label><select [(ngModel)]="form.mataAnggaranId"><option [ngValue]="null">Pilih COA</option><option *ngFor="let c of selectableCoa" [ngValue]="c.id">{{c.noCoa}} · {{c.nama}}</option></select></div>
+    <div class="span-2"><label>Mata Anggaran (COA) *</label><app-search-select [(ngModel)]="form.mataAnggaranId" [options]="coaOptions" placeholder="Ketik no COA atau nama, contoh 6101 gaji"></app-search-select></div>
     <div><label>Planning Budget *</label><input type="number" min="0" [(ngModel)]="form.planningBudget" placeholder="0"><small class="hint">{{money(form.planningBudget)}}</small></div>
     <div><label>Pagu</label><input type="number" min="0" [(ngModel)]="form.pagu" placeholder="Kosong = sama dengan planning"><small class="hint">{{form.pagu==null||form.pagu===''?'mengikuti planning':money(form.pagu)}}</small></div>
     <div><label>Status</label><select [(ngModel)]="form.status"><option value="OPEN">OPEN</option><option value="CLOSED">CLOSED</option></select></div>
@@ -92,7 +93,7 @@ import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, RkaSummary,
 </section>
 `})
 export class RkaPage implements OnInit, OnDestroy {
-  companies:Company[]=[];divisi:Divisi[]=[];coa:MataAnggaran[]=[];rows:ProgramKerja[]=[];selectableCoa:MataAnggaran[]=[];monitoring?:MonitoringRka;
+  companies:Company[]=[];divisi:Divisi[]=[];coa:MataAnggaran[]=[];rows:ProgramKerja[]=[];selectableCoa:MataAnggaran[]=[];coaOptions:SearchOption[]=[];monitoring?:MonitoringRka;
   companyId:number|null=null;divisiId:number|null=null;tahun:number|null=new Date().getFullYear();tipe:TipeAnggaran|null=null;q='';years=yearOptions();
   modal=false;editing?:ProgramKerja;saving=false;importing=false;message='';error='';formError='';importErrors:string[]=[];
   form:any={};
@@ -126,7 +127,7 @@ export class RkaPage implements OnInit, OnDestroy {
     },error:e=>this.error=errMsg(e,'Data RKA gagal dimuat.')});
     this.api.monitoring(this.filters).subscribe({next:m=>this.monitoring=m,error:()=>this.monitoring=undefined});
   }
-  filterCoa(){this.selectableCoa=this.coa.filter(c=>c.tipe===this.form.tipe && (c.aktif || c.id===this.form.mataAnggaranId));}
+  filterCoa(){this.selectableCoa=this.coa.filter(c=>c.tipe===this.form.tipe && (c.aktif || c.id===this.form.mataAnggaranId));this.coaOptions=this.selectableCoa.map(c=>({value:c.id,label:`${c.noCoa} · ${c.nama}`}));}
   tipeChanged(){this.filterCoa();if(!this.selectableCoa.some(c=>c.id===this.form.mataAnggaranId))this.form.mataAnggaranId=null;}
 
   topItems(m:MonitoringRka){return [...(m.perMataAnggaran||[])].sort((a,b)=>(b.pagu||0)-(a.pagu||0)).slice(0,10);}
