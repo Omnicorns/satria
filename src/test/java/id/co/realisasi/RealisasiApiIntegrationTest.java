@@ -125,6 +125,21 @@ class RealisasiApiIntegrationTest {
     }
 
     @Test
+    void pekerjaanSingleYearHarusMemakaiRkaTahunYangSama() throws Exception {
+        long rka2027 = id(postJson("/api/rka", Map.of(
+                "divisiId", divisiId, "tahun", 2027, "mataAnggaranId", coaCapexId, "planningBudget", 650)));
+
+        send("/api/pekerjaan", Map.of("programKerjaId", rka2027, "nama", "E-Commerce Fase 1", "pic", "iful",
+                "anggaran", 250, "tahun", 2026, "jenisPeriode", "SINGLE_YEAR"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("RKA tahun 2026")));
+
+        // Multi year boleh lanjut ke RKA tahun berikutnya.
+        postJson("/api/pekerjaan", Map.of("programKerjaId", rka2027, "nama", "E-Commerce Lanjutan", "pic", "iful",
+                "anggaran", 250, "tahun", 2026, "jenisPeriode", "MULTI_YEAR"));
+    }
+
+    @Test
     void validasiDanDuplikat() throws Exception {
         send("/api/rka", Map.of("divisiId", divisiId, "tahun", 1999, "mataAnggaranId", coaOpexId,
                 "planningBudget", -1))

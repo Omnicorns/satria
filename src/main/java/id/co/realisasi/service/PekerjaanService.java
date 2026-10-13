@@ -140,13 +140,19 @@ public class PekerjaanService {
                 && req.estimasiSelesai().isBefore(req.tanggalMulai())) {
             throw new BusinessException("Estimasi selesai tidak boleh sebelum tanggal mulai");
         }
+        int tahun = req.tahun() == null ? program.getTahun() : req.tahun();
+        JenisPeriode periode = req.jenisPeriode() == null ? JenisPeriode.SINGLE_YEAR : req.jenisPeriode();
+        if (periode == JenisPeriode.SINGLE_YEAR && tahun != program.getTahun()) {
+            throw new BusinessException("Pekerjaan single year tahun " + tahun + " harus memakai RKA tahun " + tahun
+                    + ", bukan RKA " + program.getTahun());
+        }
         k.setProgramKerja(program);
         k.setNama(req.nama());
         k.setDeskripsi(req.deskripsi());
         k.setPic(req.pic());
-        k.setTahun(req.tahun() == null ? program.getTahun() : req.tahun());
+        k.setTahun(tahun);
         k.setTipe(program.getTipe());
-        k.setJenisPeriode(req.jenisPeriode() == null ? JenisPeriode.SINGLE_YEAR : req.jenisPeriode());
+        k.setJenisPeriode(periode);
         k.setAnggaran(req.anggaran());
         k.setTanggalMulai(req.tanggalMulai());
         k.setEstimasiSelesai(req.estimasiSelesai());
