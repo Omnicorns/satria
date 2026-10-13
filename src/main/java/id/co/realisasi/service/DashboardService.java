@@ -73,9 +73,11 @@ public class DashboardService {
 
     // ---------- CAPEX/OPEX ----------
 
-    public DashboardDto.CapexOpex capexOpex(Long companyId, Long divisiId, Integer tahun, TipeAnggaran tipe) {
+        /** Sama dengan filter daftar pekerjaan, supaya widget dan tabel menghitung pekerjaan yang sama. */
+    public DashboardDto.CapexOpex capexOpex(Long companyId, Long divisiId, Integer tahun, TipeAnggaran tipe,
+                                            String pic, Long programKerjaId) {
         LocalDate today = LocalDate.now(clock);
-        List<Pekerjaan> list = pekerjaanService.search(companyId, divisiId, tahun, tipe, null, null);
+        List<Pekerjaan> list = pekerjaanService.search(companyId, divisiId, tahun, tipe, pic, programKerjaId);
 
         Map<StatusPekerjaan, Long> perStatus = list.stream()
                 .collect(Collectors.groupingBy(k -> k.status(today), Collectors.counting()));

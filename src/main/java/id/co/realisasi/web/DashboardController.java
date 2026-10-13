@@ -30,8 +30,10 @@ public class DashboardController {
     public DashboardDto.CapexOpex capexOpex(@RequestParam(required = false) Long companyId,
                                                     @RequestParam(required = false) Long divisiId,
                                             @RequestParam(required = false) Integer tahun,
-                                            @RequestParam(required = false) TipeAnggaran tipe) {
-        return service.capexOpex(companyId, divisiId, tahun, tipe);
+                                            @RequestParam(required = false) TipeAnggaran tipe,
+                                            @RequestParam(required = false) String pic,
+                                            @RequestParam(required = false) Long programKerjaId) {
+        return service.capexOpex(companyId, divisiId, tahun, tipe, pic, programKerjaId);
     }
 
     /** Executive Budget Dashboard: serapan tahun X vs usulan RKAP tahun X+1. */

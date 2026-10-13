@@ -125,6 +125,21 @@ class RealisasiApiIntegrationTest {
     }
 
     @Test
+    void pekerjaanSingleYearHarusMemakaiRkaTahunYangSama() throws Exception {
+        long rka2027 = id(postJson("/api/rka", Map.of(
+                "divisiId", divisiId, "tahun", 2027, "mataAnggaranId", coaCapexId, "planningBudget", 650)));
+
+        send("/api/pekerjaan", Map.of("programKerjaId", rka2027, "nama", "E-Commerce Fase 1", "pic", "iful",
+                "anggaran", 250, "tahun", 2026, "jenisPeriode", "SINGLE_YEAR"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("RKA tahun 2026")));
+
+        // Multi year boleh lanjut ke RKA tahun berikutnya.
+        postJson("/api/pekerjaan", Map.of("programKerjaId", rka2027, "nama", "E-Commerce Lanjutan", "pic", "iful",
+                "anggaran", 250, "tahun", 2026, "jenisPeriode", "MULTI_YEAR"));
+    }
+
+    @Test
     void validasiDanDuplikat() throws Exception {
         send("/api/rka", Map.of("divisiId", divisiId, "tahun", 1999, "mataAnggaranId", coaOpexId,
                 "planningBudget", -1))
@@ -148,7 +163,7 @@ class RealisasiApiIntegrationTest {
     void dashboardGroupOverviewDanCapexOpex() throws Exception {
         long opex26 = id(postJson("/api/rka", Map.of("divisiId", divisiId, "tahun", 2026,
                 "mataAnggaranId", coaOpexId, "planningBudget", 800)));
-        id(postJson("/api/rka", Map.of("divisiId", divisiId, "tahun", 2026,
+        long capex26 = id(postJson("/api/rka", Map.of("divisiId", divisiId, "tahun", 2026,
                 "mataAnggaranId", coaCapexId, "planningBudget", 200)));
         postJson("/api/rka", Map.of("divisiId", divisiId, "tahun", 2027,
                 "mataAnggaranId", coaOpexId, "planningBudget", 600));
@@ -159,6 +174,8 @@ class RealisasiApiIntegrationTest {
                 "anggaran", 400, "estimasiSelesai", "2026-01-31")));
         id(postJson("/api/pekerjaan", Map.of("programKerjaId", opex26, "nama", "B", "pic", "agung",
                 "anggaran", 100)));
+        id(postJson("/api/pekerjaan", Map.of("programKerjaId", capex26, "nama", "C", "pic", "budi",
+                "anggaran", 50)));
         postJson("/api/pekerjaan/" + k1 + "/realisasi", Map.of("tanggal", "2026-05-01", "nilai", 400));
 
         mvc.perform(get("/api/dashboard/group-overview").param("tahun", "2026"))
@@ -182,9 +199,22 @@ class RealisasiApiIntegrationTest {
 
         mvc.perform(get("/api/dashboard/capex-opex").param("companyId", String.valueOf(companyId)))
                 .andExpect(jsonPath("$.statusPekerjaan.terlambat").value(1))
-                .andExpect(jsonPath("$.statusPekerjaan.onTrack").value(1))
+                .andExpect(jsonPath("$.statusPekerjaan.onTrack").value(2))
                 .andExpect(jsonPath("$.bebanKerjaPerPic[0].pic").value("agung"))
                 .andExpect(jsonPath("$.progressPekerjaan[0].nama").value("A"));
+
+        // Widget mengikuti filter program kerja dan PIC seperti daftar pekerjaan.
+        mvc.perform(get("/api/dashboard/capex-opex").param("programKerjaId", String.valueOf(capex26)))
+                .andExpect(jsonPath("$.statusPekerjaan.terlambat").value(0))
+                .andExpect(jsonPath("$.statusPekerjaan.onTrack").value(1))
+                .andExpect(jsonPath("$.bebanKerjaPerPic.length()").value(1))
+                .andExpect(jsonPath("$.bebanKerjaPerPic[0].pic").value("budi"))
+                .andExpect(jsonPath("$.progressPekerjaan.length()").value(1))
+                .andExpect(jsonPath("$.progressPekerjaan[0].nama").value("C"));
+
+        mvc.perform(get("/api/dashboard/capex-opex").param("pic", "agung"))
+                .andExpect(jsonPath("$.bebanKerjaPerPic.length()").value(1))
+                .andExpect(jsonPath("$.progressPekerjaan.length()").value(2));
 
         mvc.perform(get("/api/dashboard/monitoring-rka").param("tahun", "2026"))
                 .andExpect(jsonPath("$.totalPlanning").value(1000))

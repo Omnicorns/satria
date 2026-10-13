@@ -95,7 +95,8 @@ import { CapexOpex, Company, Divisi, Financial, Milestone, Pekerjaan, PekerjaanS
     <div><label>Tanggal Mulai</label><input type="date" [(ngModel)]="form.tanggalMulai"></div>
     <div><label>Estimasi Selesai</label><input type="date" [(ngModel)]="form.estimasiSelesai"></div>
     <div><label>Periode</label><select [(ngModel)]="form.jenisPeriode"><option value="SINGLE_YEAR">Single Year</option><option value="MULTI_YEAR">Multi Year</option></select></div>
-    <div><label>Tahun</label><select [(ngModel)]="form.tahun"><option *ngFor="let y of years" [ngValue]="y">{{y}}</option></select></div>
+    <div><label>Tahun</label><select [(ngModel)]="form.tahun"><option *ngFor="let y of years" [ngValue]="y">{{y}}</option></select>
+      <small class="hint neg" *ngIf="tahunTidakCocok">Single year harus memakai RKA tahun {{form.tahun}}, bukan RKA {{selectedProgram?.tahun}}.</small></div>
     <div class="span-2"><label>Deskripsi</label><textarea rows="3" [(ngModel)]="form.deskripsi"></textarea></div>
     <div class="span-2"><label>Tindak Lanjut</label><textarea rows="2" [(ngModel)]="form.tindakLanjut"></textarea></div>
   </div>
@@ -141,6 +142,7 @@ export class PekerjaanPage implements OnInit, OnDestroy {
   /** Program untuk form: yang OPEN, plus program milik pekerjaan yang sedang diedit. */
   get programOptions(){return this.rka.filter(r=>r.status==='OPEN'||r.id===this.form.programKerjaId);}
   get selectedProgram(){return this.rka.find(r=>r.id===this.form.programKerjaId);}
+  get tahunTidakCocok(){const r=this.selectedProgram;return !!r&&this.form.jenisPeriode==='SINGLE_YEAR'&&this.form.tahun!==r.tahun;}
   private get filters(){return {companyId:this.companyId,divisiId:this.divisiId,tahun:this.tahun,tipe:this.tipe,pic:this.pic,programKerjaId:this.programKerjaId};}
   companyChanged(){this.divisiId=null;this.filterChanged();}
   clearProgramFilter(){this.programKerjaId=null;this.tahun=new Date().getFullYear();this.router.navigate([],{queryParams:{}});this.filterChanged();}
@@ -156,8 +158,7 @@ export class PekerjaanPage implements OnInit, OnDestroy {
   }
   load(){
     this.loadRows();
-    const {companyId,divisiId,tahun,tipe}=this.filters;
-    this.api.capexOpex({companyId,divisiId,tahun,tipe}).subscribe({next:c=>this.chart=c,error:()=>this.chart=undefined});
+    this.api.capexOpex(this.filters).subscribe({next:c=>this.chart=c,error:()=>this.chart=undefined});
   }
   picPct(n:number,c:CapexOpex){const max=Math.max(1,...c.bebanKerjaPerPic.map(b=>b.onTrack+b.terlambat+b.selesai));return n/max*100;}
   labelStatus(s:string){return s==='ON_TRACK'?'ON TRACK':s;}
@@ -171,6 +172,7 @@ export class PekerjaanPage implements OnInit, OnDestroy {
     const f=this.form;this.formError='';
     if(!f.programKerjaId||!f.nama?.trim()||!f.pic?.trim()){this.formError='Program kerja, nama pekerjaan, dan PIC wajib diisi.';return;}
     if(f.anggaran===null||f.anggaran===''||Number(f.anggaran)<0){this.formError='Anggaran wajib diisi dan tidak boleh negatif.';return;}
+    if(this.tahunTidakCocok){this.formError=`Pekerjaan single year tahun ${f.tahun} harus memakai RKA tahun ${f.tahun}. Pilih program kerja RKA ${f.tahun}, atau ubah periode ke Multi Year.`;return;}
     if(f.tanggalMulai&&f.estimasiSelesai&&f.estimasiSelesai<f.tanggalMulai){this.formError='Estimasi selesai tidak boleh sebelum tanggal mulai.';return;}
     const body={...f,nama:f.nama.trim(),pic:f.pic.trim(),anggaran:Number(f.anggaran),tanggalMulai:f.tanggalMulai||null,estimasiSelesai:f.estimasiSelesai||null,deskripsi:f.deskripsi||null,tindakLanjut:f.tindakLanjut||null};
     this.saving=true;
