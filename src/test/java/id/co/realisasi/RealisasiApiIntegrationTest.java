@@ -140,6 +140,64 @@ class RealisasiApiIntegrationTest {
     }
 
     @Test
+    void realisasiMultiYearMembebaniRkaSesuaiTahunRealisasi() throws Exception {
+        long rka2026 = id(postJson("/api/rka", Map.of(
+                "divisiId", divisiId, "tahun", 2026, "mataAnggaranId", coaCapexId, "planningBudget", 500)));
+        long rka2027 = id(postJson("/api/rka", Map.of(
+                "divisiId", divisiId, "tahun", 2027, "mataAnggaranId", coaCapexId, "planningBudget", 700)));
+        long kontrak = id(postJson("/api/pekerjaan", Map.of("programKerjaId", rka2026, "nama", "E-Commerce",
+                "pic", "iful", "anggaran", 1000, "tahun", 2026, "jenisPeriode", "MULTI_YEAR")));
+        long single = id(postJson("/api/pekerjaan", Map.of("programKerjaId", rka2026, "nama", "Lisensi",
+                "pic", "iful", "anggaran", 50)));
+
+        postJson("/api/pekerjaan/" + kontrak + "/realisasi", Map.of("tanggal", "2026-06-01", "nilai", 400));
+        postJson("/api/pekerjaan/" + kontrak + "/realisasi", Map.of("tanggal", "2027-03-01", "nilai", 600));
+        // Single year tetap membebani RKA-nya sendiri walau dibayar tahun berikutnya.
+        postJson("/api/pekerjaan/" + single + "/realisasi", Map.of("tanggal", "2027-01-15", "nilai", 50));
+
+        mvc.perform(get("/api/rka/" + rka2026)).andExpect(jsonPath("$.realisasi").value(450));
+        mvc.perform(get("/api/rka/" + rka2027)).andExpect(jsonPath("$.realisasi").value(600));
+        mvc.perform(get("/api/rka").param("page", "0").param("tahun", "2027"))
+                .andExpect(jsonPath("$.summary.totalRealisasi").value(600));
+        mvc.perform(get("/api/pekerjaan/" + kontrak)).andExpect(jsonPath("$.realisasi").value(1000));
+
+        // Plafon dicek terhadap RKA tahun realisasi: 2027 tinggal 100.
+        send("/api/pekerjaan/" + kontrak + "/realisasi", Map.of("tanggal", "2027-04-01", "nilai", 150))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("tahun 2027: sisa 100")));
+        send("/api/pekerjaan/" + kontrak + "/realisasi", Map.of("tanggal", "2028-01-10", "nilai", 10))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("RKA 2028")));
+
+        mvc.perform(get("/api/dashboard/monitoring-rka").param("tahun", "2027"))
+                .andExpect(jsonPath("$.totalRealisasi").value(600))
+                .andExpect(jsonPath("$.carryOver.length()").value(1))
+                .andExpect(jsonPath("$.carryOver[0].nama").value("E-Commerce"))
+                .andExpect(jsonPath("$.carryOver[0].programKerjaId").value(rka2026))
+                .andExpect(jsonPath("$.carryOver[0].realisasiSebelumnya").value(400))
+                .andExpect(jsonPath("$.carryOver[0].realisasiTahunIni").value(600))
+                .andExpect(jsonPath("$.carryOver[0].sisaKontrak").value(0));
+        mvc.perform(get("/api/dashboard/monitoring-rka").param("tahun", "2026"))
+                .andExpect(jsonPath("$.totalRealisasi").value(450))
+                .andExpect(jsonPath("$.carryOver.length()").value(0));
+
+        // Pindah ke mata anggaran yang tidak punya RKA 2027 ditolak, supaya realisasi 2027 tidak hilang.
+        long opex2026 = id(postJson("/api/rka", Map.of(
+                "divisiId", divisiId, "tahun", 2026, "mataAnggaranId", coaOpexId, "planningBudget", 5000)));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/pekerjaan/" + kontrak)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("programKerjaId", opex2026, "nama", "E-Commerce",
+                                "pic", "iful", "anggaran", 1000, "tahun", 2026, "jenisPeriode", "MULTI_YEAR"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("RKA 2027")));
+
+        // RKA 2027 tidak boleh dihapus selama dibebani realisasi multi year.
+        mvc.perform(delete("/api/rka/" + rka2027))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("multi year")));
+    }
+
+    @Test
     void validasiDanDuplikat() throws Exception {
         send("/api/rka", Map.of("divisiId", divisiId, "tahun", 1999, "mataAnggaranId", coaOpexId,
                 "planningBudget", -1))

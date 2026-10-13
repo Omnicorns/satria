@@ -56,6 +56,14 @@ import { Company, Divisi, MataAnggaran, MonitoringRka, ProgramKerja, RkaSummary,
   </article>
 </section>
 
+<article class="panel table-panel" *ngIf="monitoring?.carryOver?.length">
+  <div class="panel-head"><div><h3>Pekerjaan Multi Year Carry-over</h3><p>Pekerjaan dari tahun sebelumnya yang realisasi {{tahun}}-nya membebani RKA {{tahun}}</p></div></div>
+  <div class="table-scroll"><table><thead><tr><th>Pekerjaan</th><th>Divisi</th><th>Mulai</th><th>Nilai Kontrak</th><th>Realisasi s.d. {{tahun! - 1}}</th><th>Realisasi {{tahun}}</th><th>Sisa Kontrak</th><th>Progress</th><th></th></tr></thead><tbody>
+    <tr *ngFor="let c of monitoring!.carryOver"><td><b>{{c.nama}}</b><small class="cell-sub">{{c.noCoa}} · {{c.namaMataAnggaran}} · {{c.pic}}</small></td><td>{{c.divisiNama}}</td><td>{{c.tahunMulai}}</td><td>{{money(c.anggaran)}}</td><td>{{money(c.realisasiSebelumnya)}}</td><td>{{money(c.realisasiTahunIni)}}</td><td [class.neg]="c.sisaKontrak<0">{{money(c.sisaKontrak)}}</td><td>{{c.progress}}%</td>
+      <td class="row-actions"><a class="table-action" routerLink="/pekerjaan" [queryParams]="{programKerjaId:c.programKerjaId}">Pekerjaan</a></td></tr>
+  </tbody></table></div>
+</article>
+
 <article class="panel table-panel">
   <div class="panel-head"><div><h3>Daftar Program Kerja</h3><p>{{total}} data ditemukan</p></div></div>
   <div class="table-scroll"><table><thead><tr><th>COA / Mata Anggaran</th><th>Divisi</th><th>Tahun</th><th>Tipe</th><th>Planning</th><th>Pagu</th><th>Realisasi</th><th>Sisa</th><th>Capaian</th><th>Status</th><th></th></tr></thead><tbody>

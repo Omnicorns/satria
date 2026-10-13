@@ -21,7 +21,17 @@ public final class DashboardDto {
 
     public record MonitoringRka(BigDecimal totalPlanning, BigDecimal totalPagu, BigDecimal totalRealisasi,
                                 List<RkaItem> perMataAnggaran, DistribusiCapaian distribusi,
-                                List<RkaItem> progressTerendah) {
+                                List<RkaItem> progressTerendah, List<CarryOver> carryOver) {
+    }
+
+    /**
+     * Pekerjaan multi year dari tahun sebelumnya yang membebani RKA tahun yang dimonitor;
+     * programKerjaId = RKA tempat pekerjaan ditautkan.
+     */
+    public record CarryOver(Long pekerjaanId, Long programKerjaId, String nama, String pic, String noCoa,
+                            String namaMataAnggaran, String divisiNama, Integer tahunMulai, BigDecimal anggaran,
+                            BigDecimal realisasiSebelumnya, BigDecimal realisasiTahunIni, BigDecimal sisaKontrak,
+                            Integer progress) {
     }
 
     // ---------- CAPEX/OPEX ----------

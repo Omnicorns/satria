@@ -2,6 +2,7 @@ package id.co.realisasi.service;
 
 import id.co.realisasi.domain.Company;
 import id.co.realisasi.domain.Divisi;
+import id.co.realisasi.domain.JenisPeriode;
 import id.co.realisasi.domain.Pekerjaan;
 import id.co.realisasi.domain.ProgramKerja;
 import id.co.realisasi.domain.StatusPekerjaan;
@@ -19,6 +20,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -68,7 +70,39 @@ public class DashboardService {
                 sum(items, DashboardDto.RkaItem::realisasi),
                 items,
                 new DashboardDto.DistribusiCapaian(nol, rendah, sedang, penuh),
-                terendah);
+                terendah,
+                tahun == null ? List.of() : carryOver(companyId, divisiId, tahun, tipe, programs));
+    }
+
+    /**
+     * Pekerjaan multi year yang mulai sebelum {@code tahun} dan punya baris RKA {@code tahun} dengan divisi dan
+     * mata anggaran yang sama, selama kontraknya masih bersisa atau sudah ada realisasi di tahun ini.
+     */
+    private List<DashboardDto.CarryOver> carryOver(Long companyId, Long divisiId, int tahun, TipeAnggaran tipe,
+                                                   List<ProgramKerja> programs) {
+        Set<String> rkaTahunIni = programs.stream().map(DashboardService::kunciRka).collect(Collectors.toSet());
+        List<Pekerjaan> kandidat = pekerjaanService.search(companyId, divisiId, null, tipe, null, null).stream()
+                .filter(k -> k.getJenisPeriode() == JenisPeriode.MULTI_YEAR && k.getTahun() < tahun)
+                .filter(k -> rkaTahunIni.contains(kunciRka(k.getProgramKerja())))
+                .toList();
+        Map<Long, BigDecimal[]> realisasi = pekerjaanService.realisasiPerPekerjaanPerTahun(kandidat, tahun);
+        List<DashboardDto.CarryOver> result = new ArrayList<>();
+        for (Pekerjaan k : kandidat) {
+            BigDecimal[] r = realisasi.getOrDefault(k.getId(), new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            BigDecimal sisa = k.getAnggaran().subtract(r[0]).subtract(r[1]);
+            if (sisa.signum() <= 0 && r[1].signum() == 0) {
+                continue;
+            }
+            ProgramKerja p = k.getProgramKerja();
+            result.add(new DashboardDto.CarryOver(k.getId(), p.getId(), k.getNama(),
+                    k.getPic(), p.getMataAnggaran().getNoCoa(), p.getMataAnggaran().getNama(), p.getDivisi().getNama(),
+                    k.getTahun(), k.getAnggaran(), r[0], r[1], sisa, k.getProgress()));
+        }
+        return result;
+    }
+
+    private static String kunciRka(ProgramKerja p) {
+        return p.getDivisi().getId() + ":" + p.getMataAnggaran().getId();
     }
 
     // ---------- CAPEX/OPEX ----------
