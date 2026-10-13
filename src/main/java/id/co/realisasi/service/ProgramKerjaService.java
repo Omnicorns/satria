@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static id.co.realisasi.service.Money.nz;
 import static id.co.realisasi.service.Money.percent;
@@ -110,6 +111,10 @@ public class ProgramKerjaService {
         if (pekerjaanRepository.existsByProgramKerjaId(id)) {
             throw new BusinessException("Program kerja masih memiliki pekerjaan, hapus pekerjaannya terlebih dahulu");
         }
+        if (realisasiRepository.existsMultiYearCharge(id)) {
+            throw new BusinessException("Program kerja masih dibebani realisasi pekerjaan multi year tahun "
+                    + p.getTahun() + ", hapus realisasinya terlebih dahulu");
+        }
         repository.delete(p);
     }
 
@@ -161,6 +166,16 @@ public class ProgramKerjaService {
                     throw new BusinessException("Mata anggaran " + p.getMataAnggaran().getNoCoa()
                             + " sudah ada untuk divisi " + p.getDivisi().getNama() + " tahun " + p.getTahun());
                 });
+    }
+
+    /** Baris RKA divisi dan mata anggaran yang sama dengan {@code asal}, pada tahun lain. */
+    @Transactional(readOnly = true)
+    public Optional<ProgramKerja> sejenisTahun(ProgramKerja asal, int tahun) {
+        if (asal.getTahun() == tahun) {
+            return Optional.of(asal);
+        }
+        return repository.findByDivisiIdAndTahunAndMataAnggaranId(asal.getDivisi().getId(), tahun,
+                asal.getMataAnggaran().getId());
     }
 
     public Map<Long, BigDecimal> realisasiPerProgram(List<ProgramKerja> programs) {

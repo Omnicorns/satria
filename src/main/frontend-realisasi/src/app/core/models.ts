@@ -44,6 +44,14 @@ export interface MonitoringRka {
   perMataAnggaran:RkaItem[];
   distribusi:{nol:number; satuSampai49:number; limaPuluhSampai99:number; seratusPlus:number};
   progressTerendah:RkaItem[];
+  carryOver:CarryOver[];
+}
+
+/** Pekerjaan multi year dari tahun sebelumnya yang membebani RKA tahun yang dimonitor; programKerjaId = RKA asal pekerjaan. */
+export interface CarryOver {
+  pekerjaanId:number; programKerjaId:number; nama:string; pic:string; noCoa:string; namaMataAnggaran:string;
+  divisiNama:string; tahunMulai:number; anggaran:number; realisasiSebelumnya:number; realisasiTahunIni:number;
+  sisaKontrak:number; progress:number;
 }
 
 export interface CapexOpex {

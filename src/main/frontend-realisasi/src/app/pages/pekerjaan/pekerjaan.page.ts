@@ -76,6 +76,7 @@ import { CapexOpex, Company, Divisi, Financial, Milestone, Pekerjaan, PekerjaanS
   <div class="drawer-body" *ngIf="tab==='financial'"><ng-container *ngIf="financial as f">
     <div class="finance-hero"><div><span>Serapan</span><strong>{{f.serapanPersen | number:'1.1-1'}}%</strong></div><div class="bar-bg"><i [style.width.%]="clamp(f.serapanPersen)"></i></div><small>{{money(f.totalRealisasi)}} dari {{money(f.anggaran)}} · sisa {{money(f.sisa)}}</small></div>
     <div class="quick-form"><h4>Catat Realisasi</h4>
+      <small class="hint" *ngIf="selected?.jenisPeriode==='MULTI_YEAR'">Multi year: realisasi dibebankan ke RKA {{selected.noCoa}} divisi yang sama pada tahun tanggal realisasi.</small>
       <div class="form-grid tight"><div><label>Tanggal *</label><input type="date" [(ngModel)]="realisasiForm.tanggal"></div><div><label>Nilai (Rp) *</label><input type="number" min="0" [(ngModel)]="realisasiForm.nilai"><small class="hint">{{money(realisasiForm.nilai)}}</small></div>
         <div><label>No Dokumen</label><input [(ngModel)]="realisasiForm.noDokumen" placeholder="No SPP / invoice"></div><div><label>Keterangan</label><input [(ngModel)]="realisasiForm.keterangan"></div></div>
       <div class="quick-actions"><button class="btn primary" [disabled]="busy" (click)="addRealisasi()">Simpan Realisasi</button></div></div>

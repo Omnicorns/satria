@@ -146,6 +146,12 @@ public class PekerjaanService {
             throw new BusinessException("Pekerjaan single year tahun " + tahun + " harus memakai RKA tahun " + tahun
                     + ", bukan RKA " + program.getTahun());
         }
+        if (periode == JenisPeriode.MULTI_YEAR && k.getId() != null) {
+            // Realisasi yang sudah ada harus tetap punya RKA terbeban setelah perubahan.
+            for (Integer th : realisasiRepository.tahunRealisasi(k.getId())) {
+                rkaTerbeban(program, periode, th);
+            }
+        }
         k.setProgramKerja(program);
         k.setNama(req.nama());
         k.setDeskripsi(req.deskripsi());
@@ -246,16 +252,30 @@ public class PekerjaanService {
     }
 
     /**
-     * Mencatat realisasi. Ditolak bila total realisasi program kerja akan melebihi plafon (pagu / planning).
+     * RKA yang dibebani realisasi pada {@code tahun}: single year selalu RKA pekerjaan; multi year RKA divisi dan
+     * mata anggaran yang sama pada tahun tersebut, dan ditolak bila baris RKA itu belum ada.
+     */
+    private ProgramKerja rkaTerbeban(ProgramKerja program, JenisPeriode periode, int tahun) {
+        if (periode != JenisPeriode.MULTI_YEAR) {
+            return program;
+        }
+        return programKerjaService.sejenisTahun(program, tahun).orElseThrow(() -> new BusinessException(
+                "RKA " + tahun + " untuk " + program.getMataAnggaran().getNoCoa() + " "
+                        + program.getMataAnggaran().getNama() + " divisi " + program.getDivisi().getNama()
+                        + " belum ada. Buat baris RKA " + tahun + " terlebih dahulu"));
+    }
+
+    /**
+     * Mencatat realisasi. Ditolak bila total realisasi RKA terbeban akan melebihi plafon (pagu / planning).
      */
     public RealisasiDto.Response addRealisasi(Long pekerjaanId, RealisasiDto.Request req) {
         Pekerjaan k = get(pekerjaanId);
-        ProgramKerja program = k.getProgramKerja();
+        ProgramKerja program = rkaTerbeban(k.getProgramKerja(), k.getJenisPeriode(), req.tanggal().getYear());
         BigDecimal terpakai = nz(programKerjaService.realisasiPerProgram(List.of(program)).get(program.getId()));
         BigDecimal setelah = terpakai.add(req.nilai());
         if (setelah.compareTo(program.plafon()) > 0) {
             throw new BusinessException("Realisasi melebihi sisa anggaran mata anggaran "
-                    + program.getMataAnggaran().getNoCoa() + ": sisa " + program.plafon().subtract(terpakai).toPlainString());
+                    + program.getMataAnggaran().getNoCoa() + " tahun " + program.getTahun() + ": sisa " + program.plafon().subtract(terpakai).toPlainString());
         }
         Realisasi r = new Realisasi();
         r.setPekerjaan(k);
@@ -273,6 +293,19 @@ public class PekerjaanService {
                 .filter(x -> x.getPekerjaan().getId().equals(pekerjaanId))
                 .orElseThrow(() -> new NotFoundException("Realisasi", realisasiId));
         realisasiRepository.delete(r);
+    }
+
+    /** Realisasi per pekerjaan sebelum dan pada {@code tahun}: nilai [sebelum, padaTahun]. */
+    public Map<Long, BigDecimal[]> realisasiPerPekerjaanPerTahun(List<Pekerjaan> list, int tahun) {
+        Map<Long, BigDecimal[]> result = new HashMap<>();
+        if (list.isEmpty()) {
+            return result;
+        }
+        for (Object[] row : realisasiRepository.sumByPekerjaanPerTahun(list.stream().map(Pekerjaan::getId).toList(),
+                tahun)) {
+            result.put((Long) row[0], new BigDecimal[]{(BigDecimal) row[1], (BigDecimal) row[2]});
+        }
+        return result;
     }
 
     public Map<Long, BigDecimal> realisasiPerPekerjaan(List<Pekerjaan> list) {
