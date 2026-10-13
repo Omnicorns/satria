@@ -156,8 +156,7 @@ export class PekerjaanPage implements OnInit, OnDestroy {
   }
   load(){
     this.loadRows();
-    const {companyId,divisiId,tahun,tipe}=this.filters;
-    this.api.capexOpex({companyId,divisiId,tahun,tipe}).subscribe({next:c=>this.chart=c,error:()=>this.chart=undefined});
+    this.api.capexOpex(this.filters).subscribe({next:c=>this.chart=c,error:()=>this.chart=undefined});
   }
   picPct(n:number,c:CapexOpex){const max=Math.max(1,...c.bebanKerjaPerPic.map(b=>b.onTrack+b.terlambat+b.selesai));return n/max*100;}
   labelStatus(s:string){return s==='ON_TRACK'?'ON TRACK':s;}
