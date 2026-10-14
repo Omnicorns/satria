@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class LdapDirectoryAuthenticatorTest {
 
     private final LdapDirectoryAuthenticator ldap = new LdapDirectoryAuthenticator(new LdapProperties(true,
-            "ldap://127.0.0.1:1", "sarinah.net", "DC=sarinah,DC=net", null, null, null, 500, 500));
+            "ldap://127.0.0.1:1", "sarinah.net", "DC=sarinah,DC=net", null, "itgroup@sarinah.net", null, 500, 500));
 
     @Test
     void passwordKosongDitolakTanpaMenghubungiAd() {

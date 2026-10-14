@@ -116,6 +116,30 @@ Variabel lingkungan:
 | `AUTH_REQUIRED` | `true` (prod), `false` di profil dev/test |
 | `SATRIA_ADMIN_USERS` | kosong (prod), `admin` di profil dev. Username yang bebas memilih divisi di Program Kerja |
 
+Cara set `LDAP_BIND_PASSWORD` (harus di proses/terminal yang sama yang menjalankan backend, lalu restart):
+
+```powershell
+# Windows PowerShell
+$env:LDAP_BIND_PASSWORD = 'password-service-account'
+mvn spring-boot:run          # atau: java -jar target\backend-realisasi-0.1.0.jar
+```
+
+```bat
+:: Windows cmd
+set "LDAP_BIND_PASSWORD=password-service-account"
+mvn spring-boot:run
+```
+
+```bash
+# Linux / macOS / Git Bash
+export LDAP_BIND_PASSWORD='password-service-account'
+java -jar target/backend-realisasi-0.1.0.jar
+```
+
+IntelliJ: Run → Edit Configurations → (aplikasi Spring Boot) → Environment variables → `LDAP_BIND_PASSWORD=...`.
+Docker Compose: `LDAP_BIND_PASSWORD=... docker compose up` (sudah diteruskan di `docker-compose.yml`).
+`ldap.manager-dn` default `itgroup@sarinah.net` (di `application.yml`), ganti lewat env `LDAP_MANAGER_DN` bila perlu.
+
 Profil dev/test tidak memakai AD: username apa pun bisa login dengan password `dev`.
 Untuk mencoba AD dari dev: `LDAP_ENABLED=true AUTH_REQUIRED=true mvn spring-boot:run -Dspring-boot.run.profiles=dev`.
 
