@@ -38,7 +38,7 @@ export interface RealisasiItem { id:number; tanggal:string; periodeTahun:number;
 export interface Financial { pekerjaanId:number; anggaran:number; totalRealisasi:number; sisa:number; serapanPersen:number; transaksi:RealisasiItem[]; }
 export interface ImportResult { totalBaris:number; dibuat:number; diperbarui:number; errors:string[]; }
 
-export interface RkaItem { programKerjaId:number; noCoa:string; nama:string; divisiNama:string; planning:number; pagu:number; realisasi:number; capaianPersen:number; }
+export interface RkaItem { programKerjaId:number; noCoa:string; nama:string; divisiNama:string; planning:number; pagu:number|null; realisasi:number; capaianPersen:number; }
 export interface MonitoringRka {
   totalPlanning:number; totalPagu:number; totalRealisasi:number;
   perMataAnggaran:RkaItem[];
